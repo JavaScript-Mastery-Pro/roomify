@@ -28,6 +28,8 @@ export const LIGHTING_OPTIONS = [
   { id: 'night', name: 'Night', description: 'Artificial interior lighting, dark exterior, cozy and intimate ambiance', thumbnail: '#1e1b4b' },
 ];
 
+export const PUTER_WORKER_URL = import.meta.env.VITE_PUTER_WORKER_URL || '';
+
 export const MOCK_SCENES = {
   initial: "https://picsum.photos/1200/800?grayscale", // Represents the raw sketch feel
   floorPlan: "https://images.unsplash.com/photo-1599694207166-70e6e76870df?auto=format&fit=crop&q=80&w=1000", // Generic floor plan

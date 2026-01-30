@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import Landing from './components/Landing';
-import Visualizer from './components/Visualizer';
-import { ViewState } from './types';
+import React, { useState, useEffect } from "react";
+import Landing from "./components/Landing";
+import Visualizer from "./components/Visualizer";
+import { ViewState } from "./types";
+import { puter } from "@heyputer/puter.js";
+import { PUTER_WORKER_URL } from "./constants";
 
 export interface DesignHistoryItem {
   id: string;
@@ -9,82 +11,163 @@ export interface DesignHistoryItem {
   timestamp: number;
 }
 
-const STORAGE_KEY = 'roomify_design_history_v1';
-
 function App() {
-  const [currentView, setCurrentView] = useState<ViewState>('landing');
+  const [currentView, setCurrentView] = useState<ViewState>("landing");
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  
-  // Initialize history from LocalStorage
-  const [designHistory, setDesignHistory] = useState<DesignHistoryItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      console.error("Failed to load history", e);
-      return [];
-    }
-  });
 
-  // Persist history changes
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(designHistory));
-  }, [designHistory]);
+  const [designHistory, setDesignHistory] = useState<DesignHistoryItem[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  const ensureSignedIn = async (prompt: boolean) => {
+    try {
+      const signedIn = await puter.auth.isSignedIn();
+      if (signedIn) return true;
+      if (!prompt) return false;
+      await puter.auth.signIn();
+      return await puter.auth.isSignedIn();
+    } catch (error) {
+      console.error("Puter auth check failed:", error);
+      return false;
+    }
+  };
+
+  const fetchHistory = async () => {
+    if (!PUTER_WORKER_URL) {
+      console.warn("Missing VITE_PUTER_WORKER_URL; skipping history fetch.");
+      return;
+    }
+    const canFetch = await ensureSignedIn(false);
+    if (!canFetch) return;
+    try {
+      setIsLoadingHistory(true);
+      const response = await puter.workers.exec(`${PUTER_WORKER_URL}/api/projects/list`, {
+        method: "GET",
+      });
+      if (!response.ok) {
+        console.error("Failed to fetch history:", await response.text());
+        return;
+      }
+      const data = await response.json();
+      const items = Array.isArray(data?.projects) ? data.projects : [];
+      setDesignHistory(items);
+    } catch (error) {
+      console.error("Failed to fetch history:", error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const saveProject = async (item: DesignHistoryItem) => {
+    if (!PUTER_WORKER_URL) {
+      console.warn("Missing VITE_PUTER_WORKER_URL; skipping history save.");
+      return;
+    }
+    const canSave = await ensureSignedIn(true);
+    if (!canSave) return;
+    try {
+      const response = await puter.workers.exec(`${PUTER_WORKER_URL}/api/projects/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project: item }),
+      });
+      if (!response.ok) {
+        console.error("Failed to save project:", await response.text());
+      }
+    } catch (error) {
+      console.error("Failed to save project:", error);
+    }
+  };
 
   const navigateTo = (view: ViewState) => {
     setCurrentView(view);
   };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
 
   const handleUploadComplete = (base64Image: string) => {
     const newId = Date.now().toString();
     const newItem: DesignHistoryItem = {
       id: newId,
       image: base64Image,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
-    
-    setDesignHistory(prev => [newItem, ...prev]);
+
+    setDesignHistory((prev) => [newItem, ...prev]);
+    saveProject(newItem);
     setUploadedImage(base64Image);
     setCurrentSessionId(newId);
-    navigateTo('visualizer');
+    navigateTo("visualizer");
   };
 
   const handleRenderComplete = (renderedImage: string) => {
     if (currentSessionId) {
-      setDesignHistory(prev => prev.map(item => 
-        item.id === currentSessionId 
-          ? { ...item, image: renderedImage, timestamp: Date.now() } 
-          : item
-      ));
+      const updatedItem = {
+        id: currentSessionId,
+        image: renderedImage,
+        timestamp: Date.now(),
+      };
+      setDesignHistory((prev) =>
+        prev.map((item) => (item.id === currentSessionId ? updatedItem : item)),
+      );
+      saveProject(updatedItem);
     }
+  };
+
+  const handleSaveCurrent = (image: string) => {
+    const id = currentSessionId || Date.now().toString();
+    const updatedItem = {
+      id,
+      image,
+      timestamp: Date.now(),
+    };
+
+    if (!currentSessionId) {
+      setCurrentSessionId(id);
+    }
+
+    setDesignHistory((prev) => {
+      const exists = prev.some((item) => item.id === id);
+      return exists
+        ? prev.map((item) => (item.id === id ? updatedItem : item))
+        : [updatedItem, ...prev];
+    });
+    saveProject(updatedItem);
   };
 
   const handleSelectHistoryItem = (item: DesignHistoryItem) => {
     setUploadedImage(item.image);
     setCurrentSessionId(item.id);
-    navigateTo('visualizer');
+    navigateTo("visualizer");
   };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="relative z-10">
-        {currentView === 'landing' && (
-          <Landing 
-            onStart={handleUploadComplete} 
+        {currentView === "landing" && (
+          <Landing
+            onStart={handleUploadComplete}
             history={designHistory}
+            isLoadingHistory={isLoadingHistory}
+            onSignIn={async () => {
+              await puter.auth.signIn();
+              await fetchHistory();
+            }}
             onSelectHistory={(id) => {
-              const item = designHistory.find(i => i.id === id);
+              const item = designHistory.find((i) => i.id === id);
               if (item) handleSelectHistoryItem(item);
             }}
           />
         )}
-        
-        {currentView === 'visualizer' && (
-          <Visualizer 
-            onBack={() => navigateTo('landing')} 
+
+        {currentView === "visualizer" && (
+          <Visualizer
+            onBack={() => navigateTo("landing")}
             initialImage={uploadedImage}
             onRenderComplete={handleRenderComplete}
+            onSave={handleSaveCurrent}
           />
         )}
       </div>

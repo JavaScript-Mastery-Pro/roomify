@@ -6,19 +6,20 @@ import {
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { WALL_MATERIALS, FLOOR_MATERIALS, FURNITURE_STYLES, LIGHTING_OPTIONS } from '../constants';
-import { GoogleGenAI } from "@google/genai";
+import { puter } from "@heyputer/puter.js";
 
 interface VisualizerProps {
   onBack: () => void;
   initialImage: string | null;
   onRenderComplete?: (image: string) => void;
+  onSave?: (image: string) => void;
 }
 
-const Visualizer: React.FC<VisualizerProps> = ({ onBack, initialImage, onRenderComplete }) => {
+const Visualizer: React.FC<VisualizerProps> = ({ onBack, initialImage, onRenderComplete, onSave }) => {
   const [activeTab, setActiveTab] = useState<'walls' | 'floor' | 'style' | 'lighting' | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
-  const [apiKeyError, setApiKeyError] = useState(false);
+  const [authRequired, setAuthRequired] = useState(false);
   
   // History Management for Undo functionality
   const [history, setHistory] = useState<string[]>([]);
@@ -40,6 +41,8 @@ const Visualizer: React.FC<VisualizerProps> = ({ onBack, initialImage, onRenderC
   const [selectedLighting, setSelectedLighting] = useState<string>(LIGHTING_OPTIONS[1].id); // Default to Noon
   
   const hasInitialGenerated = useRef(false);
+  const hasMounted = useRef(false);
+  const changeDebounceRef = useRef<number | null>(null);
 
   // Helper to get names for prompt
   const getMaterialName = (id: string, list: any[]) => list.find(m => m.id === id)?.name || '';
@@ -62,33 +65,31 @@ const Visualizer: React.FC<VisualizerProps> = ({ onBack, initialImage, onRenderC
     }
   };
 
-  // API Key Handling
+  // Puter Auth Handling
   useEffect(() => {
-    const checkKey = async () => {
-      if ((window as any).aistudio && (window as any).aistudio.hasSelectedApiKey) {
-        const hasKey = await (window as any).aistudio.hasSelectedApiKey();
-        console.log("Has API Key selected:", hasKey);
+    const checkAuth = async () => {
+      try {
+        const signedIn = await puter.auth.isSignedIn();
+        setAuthRequired(!signedIn);
+      } catch (error) {
+        console.error("Puter auth check failed:", error);
       }
     };
-    checkKey();
+    checkAuth();
   }, []);
 
-  const handleConnectProject = async () => {
-    if ((window as any).aistudio && (window as any).aistudio.openSelectKey) {
-      try {
-        await (window as any).aistudio.openSelectKey();
-        setApiKeyError(false);
-        // Retry generation if we are in the initial state or just failed
-        if (!currentImage && initialImage) {
-           // Reset the ref so it tries again
-           hasInitialGenerated.current = true; // It's already true if we failed, but let's ensure logic holds
-           generate3DView(true);
-        } else if (currentImage) {
-           generate3DView(false);
-        }
-      } catch (e) {
-        console.error("Key selection failed", e);
+  const handleSignIn = async () => {
+    try {
+      await puter.auth.signIn();
+      setAuthRequired(false);
+      if (!currentImage && initialImage) {
+        hasInitialGenerated.current = true;
+        generate3DView(true);
+      } else if (currentImage) {
+        generate3DView(false);
       }
+    } catch (error) {
+      console.error("Puter sign-in failed:", error);
     }
   };
 
@@ -96,12 +97,17 @@ const Visualizer: React.FC<VisualizerProps> = ({ onBack, initialImage, onRenderC
     if (!initialImage) return;
     
     // Clear previous errors
-    setApiKeyError(false);
-    setIsProcessing(true);
+    setAuthRequired(false);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      
+      const signedIn = await puter.auth.isSignedIn();
+      if (!signedIn) {
+        setAuthRequired(true);
+        return;
+      }
+
+      setIsProcessing(true);
+
       const sourceImage = isInitial || !currentImage ? initialImage : currentImage;
       const base64Data = sourceImage.split(',')[1];
       const mimeType = sourceImage.split(';')[0].split(':')[1];
@@ -161,35 +167,20 @@ const Visualizer: React.FC<VisualizerProps> = ({ onBack, initialImage, onRenderC
         `;
       }
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
-        contents: {
-          parts: [
-            {
-              inlineData: {
-                data: base64Data,
-                mimeType: mimeType
-              }
-            },
-            { text: prompt }
-          ]
-        },
-        config: {
-            imageConfig: {
-                aspectRatio: "1:1"
-            }
-        }
+      const response = await puter.ai.txt2img(prompt, {
+        provider: "gemini",
+        model: "gemini-2.5-flash-image-preview",
+        input_image: base64Data,
+        input_image_mime_type: mimeType,
+        ratio: { w: 1024, h: 1024 }
       });
 
-      let newImageUrl = null;
-      if (response.candidates?.[0]?.content?.parts) {
-        for (const part of response.candidates[0].content.parts) {
-           if (part.inlineData) {
-             newImageUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-             break;
-           }
-        }
-      }
+      const newImageUrl =
+        typeof response === "string"
+          ? response
+          : response instanceof HTMLImageElement
+          ? response.src
+          : null;
 
       if (newImageUrl) {
         const newHistory = history.slice(0, currentHistoryIndex + 1);
@@ -202,16 +193,11 @@ const Visualizer: React.FC<VisualizerProps> = ({ onBack, initialImage, onRenderC
         if (onRenderComplete) {
             onRenderComplete(newImageUrl);
         }
-      } else {
-        console.warn("No image returned:", response.text);
       }
-
     } catch (error: any) {
       console.error("Generation failed:", error);
-      // Handle Permission Denied / 403
-      const errString = error.toString();
-      if (errString.includes("403") || errString.includes("PERMISSION_DENIED") || error.status === 403) {
-          setApiKeyError(true);
+      if (error?.status === 401 || error?.status === 403) {
+        setAuthRequired(true);
       }
     } finally {
       setIsProcessing(false);
@@ -276,16 +262,35 @@ const Visualizer: React.FC<VisualizerProps> = ({ onBack, initialImage, onRenderC
       generate3DView(true);
     }
   }, [initialImage]);
+
+  useEffect(() => {
+    if (!hasMounted.current) {
+      hasMounted.current = true;
+      return;
+    }
+
+    if (!initialImage || !hasInitialGenerated.current) return;
+
+    if (changeDebounceRef.current) {
+      window.clearTimeout(changeDebounceRef.current);
+    }
+
+    changeDebounceRef.current = window.setTimeout(() => {
+      generate3DView(false);
+    }, 250);
+
+    return () => {
+      if (changeDebounceRef.current) {
+        window.clearTimeout(changeDebounceRef.current);
+      }
+    };
+  }, [selectedWall, selectedFloor, selectedStyle, selectedLighting, initialImage]);
   
   const handleMaterialChange = (type: 'walls' | 'floor' | 'style' | 'lighting', id: string) => {
     if (type === 'walls') setSelectedWall(id);
     if (type === 'floor') setSelectedFloor(id);
     if (type === 'style') setSelectedStyle(id);
     if (type === 'lighting') setSelectedLighting(id);
-    
-    setTimeout(() => {
-        generate3DView(false);
-    }, 100);
   };
 
   const getLightingIcon = (id: string) => {
@@ -302,30 +307,30 @@ const Visualizer: React.FC<VisualizerProps> = ({ onBack, initialImage, onRenderC
     <div className="min-h-screen bg-background pt-4 pb-4 px-4 md:px-6 flex flex-col items-center font-sans relative">
       
       {/* API Key Modal Overlay */}
-      {apiKeyError && (
+      {authRequired && (
         <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 text-center border border-zinc-200">
                 <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <AlertTriangle className="text-primary w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-serif font-bold text-black mb-2">Access Required</h3>
+                <h3 className="text-xl font-serif font-bold text-black mb-2">Sign in required</h3>
                 <p className="text-zinc-600 text-sm mb-6 leading-relaxed">
-                    Generating high-fidelity 3D renders requires a connected Google Cloud Project with billing enabled.
+                    Sign in with your Puter account to enable AI rendering and save your progress.
                 </p>
                 <div className="flex flex-col space-y-3">
-                    <Button onClick={handleConnectProject} fullWidth className="bg-primary hover:bg-orange-600 text-white">
-                        Connect Google Cloud Project
+                    <Button onClick={handleSignIn} fullWidth className="bg-primary hover:bg-orange-600 text-white">
+                        Sign in with Puter
                     </Button>
                     <a 
-                        href="https://ai.google.dev/gemini-api/docs/billing" 
+                        href="https://docs.puter.com/Auth/" 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-xs text-zinc-400 hover:text-zinc-600 underline"
                     >
-                        Learn more about billing
+                        Learn more about Puter auth
                     </a>
                     <button 
-                        onClick={() => { setApiKeyError(false); setIsProcessing(false); }}
+                        onClick={() => { setAuthRequired(false); setIsProcessing(false); }}
                         className="text-xs text-zinc-400 hover:text-black mt-2"
                     >
                         Cancel
@@ -394,6 +399,16 @@ const Visualizer: React.FC<VisualizerProps> = ({ onBack, initialImage, onRenderC
                 disabled={!currentImage}
             >
               <Download className="w-4 h-4 mr-2" /> Export
+            </Button>
+
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => currentImage && onSave?.(currentImage)}
+              className="bg-white text-zinc-900 border border-zinc-200 h-9 shadow-sm hover:bg-zinc-50"
+              disabled={!currentImage || isProcessing}
+            >
+              Save
             </Button>
           </div>
         </header>
