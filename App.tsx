@@ -18,6 +18,8 @@ function App() {
 
   const [designHistory, setDesignHistory] = useState<DesignHistoryItem[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [publicProjects, setPublicProjects] = useState<DesignHistoryItem[]>([]);
+  const [isLoadingPublic, setIsLoadingPublic] = useState(false);
 
   const ensureSignedIn = async (prompt: boolean) => {
     try {
@@ -58,7 +60,33 @@ function App() {
     }
   };
 
-  const saveProject = async (item: DesignHistoryItem) => {
+  const fetchPublicProjects = async () => {
+    if (!PUTER_WORKER_URL) {
+      console.warn("Missing VITE_PUTER_WORKER_URL; skipping public projects fetch.");
+      return;
+    }
+    const canFetch = await ensureSignedIn(false);
+    if (!canFetch) return;
+    try {
+      setIsLoadingPublic(true);
+      const response = await puter.workers.exec(`${PUTER_WORKER_URL}/api/projects/public`, {
+        method: "GET",
+      });
+      if (!response.ok) {
+        console.error("Failed to fetch public projects:", await response.text());
+        return;
+      }
+      const data = await response.json();
+      const items = Array.isArray(data?.projects) ? data.projects : [];
+      setPublicProjects(items);
+    } catch (error) {
+      console.error("Failed to fetch public projects:", error);
+    } finally {
+      setIsLoadingPublic(false);
+    }
+  };
+
+  const saveProject = async (item: DesignHistoryItem, share: boolean = false) => {
     if (!PUTER_WORKER_URL) {
       console.warn("Missing VITE_PUTER_WORKER_URL; skipping history save.");
       return;
@@ -69,7 +97,7 @@ function App() {
       const response = await puter.workers.exec(`${PUTER_WORKER_URL}/api/projects/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project: item }),
+        body: JSON.stringify({ project: item, share }),
       });
       if (!response.ok) {
         console.error("Failed to save project:", await response.text());
@@ -85,6 +113,7 @@ function App() {
 
   useEffect(() => {
     fetchHistory();
+    fetchPublicProjects();
   }, []);
 
   const handleUploadComplete = (base64Image: string) => {
@@ -116,7 +145,7 @@ function App() {
     }
   };
 
-  const handleSaveCurrent = (image: string) => {
+  const handleShareCurrent = async (image: string) => {
     const id = currentSessionId || Date.now().toString();
     const updatedItem = {
       id,
@@ -134,12 +163,21 @@ function App() {
         ? prev.map((item) => (item.id === id ? updatedItem : item))
         : [updatedItem, ...prev];
     });
-    saveProject(updatedItem);
+
+    await saveProject(updatedItem, true);
+    await fetchPublicProjects();
   };
 
   const handleSelectHistoryItem = (item: DesignHistoryItem) => {
     setUploadedImage(item.image);
     setCurrentSessionId(item.id);
+    navigateTo("visualizer");
+  };
+
+  const handleSelectPublicItem = (item: DesignHistoryItem) => {
+    const newId = Date.now().toString();
+    setUploadedImage(item.image);
+    setCurrentSessionId(newId);
     navigateTo("visualizer");
   };
 
@@ -154,11 +192,15 @@ function App() {
             onSignIn={async () => {
               await puter.auth.signIn();
               await fetchHistory();
+              await fetchPublicProjects();
             }}
             onSelectHistory={(id) => {
               const item = designHistory.find((i) => i.id === id);
               if (item) handleSelectHistoryItem(item);
             }}
+            onSelectPublic={handleSelectPublicItem}
+            publicProjects={publicProjects}
+            isLoadingPublic={isLoadingPublic}
           />
         )}
 
@@ -167,7 +209,8 @@ function App() {
             onBack={() => navigateTo("landing")}
             initialImage={uploadedImage}
             onRenderComplete={handleRenderComplete}
-            onSave={handleSaveCurrent}
+            onShare={handleShareCurrent}
+            projectName={currentSessionId ? `Project ${currentSessionId.slice(-4)}` : "Untitled Project"}
           />
         )}
       </div>

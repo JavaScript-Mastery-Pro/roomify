@@ -8,11 +8,23 @@ interface LandingProps {
   onStart: (file: string) => void;
   history: DesignHistoryItem[];
   onSelectHistory: (id: string) => void;
+  onSelectPublic: (item: DesignHistoryItem) => void;
   onSignIn: () => Promise<void>;
   isLoadingHistory: boolean;
+  publicProjects: DesignHistoryItem[];
+  isLoadingPublic: boolean;
 }
 
-const Landing: React.FC<LandingProps> = ({ onStart, history, onSelectHistory, onSignIn, isLoadingHistory }) => {
+const Landing: React.FC<LandingProps> = ({
+  onStart,
+  history,
+  onSelectHistory,
+  onSelectPublic,
+  onSignIn,
+  isLoadingHistory,
+  publicProjects,
+  isLoadingPublic,
+}) => {
   const uploadRef = useRef<HTMLDivElement>(null);
 
   const scrollToUpload = () => {
@@ -113,16 +125,16 @@ const Landing: React.FC<LandingProps> = ({ onStart, history, onSelectHistory, on
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
             <div className="max-w-2xl">
-              <h2 className="text-4xl font-serif text-black mb-4">Community Projects</h2>
+              <h2 className="text-4xl font-serif text-black mb-4">Your Projects</h2>
               <p className="text-zinc-500 text-lg">
-                Browse recent renders from the Roomify community and jump into any project.
+                Pick up where you left off. Select a project to continue refining your visualization.
               </p>
             </div>
           </div>
 
           {isLoadingHistory ? (
             <div className="flex items-center justify-center text-sm text-zinc-500">
-              Loading projects…
+              Loading your projects…
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -130,7 +142,7 @@ const Landing: React.FC<LandingProps> = ({ onStart, history, onSelectHistory, on
                 history.map((item, index) => (
                   <div
                     key={item.id}
-                    onClick={() => onSelectHistory(item.id)}
+                    onClick={() => onSelectPublic(item)}
                     className="group relative bg-white rounded-xl overflow-hidden border border-zinc-200 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col h-full"
                   >
                     <div className="aspect-[4/3] overflow-hidden bg-zinc-100 relative">
@@ -166,7 +178,72 @@ const Landing: React.FC<LandingProps> = ({ onStart, history, onSelectHistory, on
                 ))
               ) : (
                 <div className="col-span-full rounded-xl border border-dashed border-zinc-200 bg-zinc-50 p-10 text-center text-sm text-zinc-500">
-                  No community projects yet. Upload a floor plan to create the first one.
+                  No projects yet. Upload a floor plan to create your first one.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="py-24 bg-white relative border-b border-zinc-100">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
+            <div className="max-w-2xl">
+              <h2 className="text-4xl font-serif text-black mb-4">Community Projects</h2>
+              <p className="text-zinc-500 text-lg">
+                Explore shared projects from the Roomify community.
+              </p>
+            </div>
+          </div>
+
+          {isLoadingPublic ? (
+            <div className="flex items-center justify-center text-sm text-zinc-500">
+              Loading community projects…
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {publicProjects.length > 0 ? (
+                publicProjects.map((item, index) => (
+                  <div
+                    key={`public-${item.id}`}
+                    onClick={() => onSelectHistory(item.id)}
+                    className="group relative bg-white rounded-xl overflow-hidden border border-zinc-200 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col h-full"
+                  >
+                    <div className="aspect-[4/3] overflow-hidden bg-zinc-100 relative">
+                      <img
+                        src={item.image}
+                        alt={`Community Project ${publicProjects.length - index}`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                      />
+                      <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-2 py-1 rounded-md border border-zinc-200 shadow-sm">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-800">
+                          Shared
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-5 flex justify-between items-center bg-white border-t border-zinc-100 flex-grow">
+                      <div>
+                        <h3 className="text-lg font-serif font-bold text-zinc-900 group-hover:text-primary transition-colors">
+                          Community Render {publicProjects.length - index}
+                        </h3>
+                        <div className="flex items-center text-zinc-400 text-xs mt-1 space-x-2">
+                          <Clock size={12} />
+                          <span className="font-mono uppercase">
+                            {new Date(item.timestamp).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="w-10 h-10 rounded-full bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-400 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-300">
+                        <ArrowUpRight size={18} />
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full rounded-xl border border-dashed border-zinc-200 bg-zinc-50 p-10 text-center text-sm text-zinc-500">
+                  No shared projects yet. Click Share in the editor to publish yours.
                 </div>
               )}
             </div>
