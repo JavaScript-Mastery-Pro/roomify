@@ -35,3 +35,32 @@ export const MOCK_SCENES = {
   floorPlan: "https://images.unsplash.com/photo-1599694207166-70e6e76870df?auto=format&fit=crop&q=80&w=1000", // Generic floor plan
   rendered: "https://picsum.photos/1200/800?random=1",
 };
+
+export const ROOMIFY_RENDER_PROMPT = `
+TRANSFORM this 2D floor plan into a High-Fidelity 3D Top-Down Render.
+
+🚨 **PRIMARY DIRECTIVE: ERASE ALL TEXT** 🚨
+The input image contains labels (e.g., "Bedroom", "12'6 x 11'8", "Kitchen").
+You must COMPLETELY REMOVE these text annotations.
+- Do NOT render any letters or numbers.
+- The floor material (wood/tile) must continue seamlessly where the text used to be.
+- The final output must be clean and unannotated.
+
+🏗️ **GEOMETRY & STRUCTURE**:
+- **Walls**: Extrude 3D walls exactly where the black lines are. Do not move them.
+- **Doors**: Convert all door swing arcs into 3D doors in the open position.
+- **Windows**: Convert thin lines on perimeter walls into glass windows.
+
+🛋️ **FURNITURE & OBJECTS**:
+- **Replicate**: Convert every 2D icon into a photorealistic 3D object.
+   - Bed icon -> Realistic Bed with duvet and pillows.
+   - Sofa icon -> Modern sectional or sofa.
+   - Dining table -> Table with chairs.
+   - Kitchen -> Countertops with sink and stove.
+   - Bathroom -> Porcelain toilet, sink, and tub/shower.
+
+🎨 **STYLE**:
+- Perspective: Orthographic Top-Down.
+- Lighting: Bright, neutral daylight, high contrast, clear visibility.
+- Atmosphere: Professional Architectural Visualization.
+`.trim();

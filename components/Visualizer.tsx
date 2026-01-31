@@ -1,15 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import {
-  Box,
-  Download,
-  MoveHorizontal,
-  RefreshCw,
-  Share2,
-  X,
-  AlertTriangle,
-} from "lucide-react";
+import { Box, Download, RefreshCw, Share2, X, AlertTriangle } from "lucide-react";
+import { ReactCompareSlider, ReactCompareSliderImage } from "react-compare-slider";
 import { Button } from "./ui/Button";
 import { puter } from "@heyputer/puter.js";
+import { ROOMIFY_RENDER_PROMPT } from "../constants";
 
 interface VisualizerProps {
   onBack: () => void;
@@ -43,14 +37,6 @@ const Visualizer: React.FC<VisualizerProps> = ({
   );
 
   const hasInitialGenerated = useRef(false);
-
-  const [sliderPosition, setSliderPosition] = useState(50);
-  const [isDragging, setIsDragging] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [containerDimensions, setContainerDimensions] = useState({
-    width: 0,
-    height: 0,
-  });
 
   const handleExport = () => {
     if (!currentImage) return;
@@ -106,36 +92,7 @@ const Visualizer: React.FC<VisualizerProps> = ({
       const base64Data = sourceImage.split(",")[1];
       const mimeType = sourceImage.split(";")[0].split(":")[1];
 
-      const prompt = `
-        TRANSFORM this 2D floor plan into a High-Fidelity 3D Top-Down Render.
-
-        🚨 **PRIMARY DIRECTIVE: ERASE ALL TEXT** 🚨
-        The input image contains labels (e.g., "Bedroom", "12'6 x 11'8", "Kitchen").
-        You must COMPLETELY REMOVE these text annotations.
-        - Do NOT render any letters or numbers.
-        - The floor material (wood/tile) must continue seamlessly where the text used to be.
-        - The final output must be clean and unannotated.
-
-        🏗️ **GEOMETRY & STRUCTURE**:
-        - **Walls**: Extrude 3D walls exactly where the black lines are. Do not move them.
-        - **Doors**: Convert all door swing arcs into 3D doors in the open position.
-        - **Windows**: Convert thin lines on perimeter walls into glass windows.
-
-        🛋️ **FURNITURE & OBJECTS**:
-        - **Replicate**: Convert every 2D icon into a photorealistic 3D object.
-           - Bed icon -> Realistic Bed with duvet and pillows.
-           - Sofa icon -> Modern sectional or sofa.
-           - Dining table -> Table with chairs.
-           - Kitchen -> Countertops with sink and stove.
-           - Bathroom -> Porcelain toilet, sink, and tub/shower.
-
-        🎨 **STYLE**:
-        - Perspective: Orthographic Top-Down.
-        - Lighting: Bright, neutral daylight, high contrast, clear visibility.
-        - Atmosphere: Professional Architectural Visualization.
-      `;
-
-      const response = await puter.ai.txt2img(prompt, {
+      const response = await puter.ai.txt2img(ROOMIFY_RENDER_PROMPT, {
         provider: "gemini",
         model: "gemini-2.5-flash-image-preview",
         input_image: base64Data,
@@ -175,9 +132,6 @@ const Visualizer: React.FC<VisualizerProps> = ({
 
       if (newImageUrl) {
         setCurrentImage(newImageUrl);
-        if (isInitial) {
-          setSliderPosition(50);
-        }
         if (onRenderComplete) {
           onRenderComplete({
             renderedImage: newImageUrl,
@@ -205,51 +159,6 @@ const Visualizer: React.FC<VisualizerProps> = ({
     hasInitialGenerated.current = true;
     generate3DView(true);
   }, [initialImage, initialRender]);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width, height } = entry.contentRect;
-        setContainerDimensions({ width, height });
-      }
-    });
-
-    resizeObserver.observe(containerRef.current);
-    return () => {
-      resizeObserver.disconnect();
-    };
-  }, [currentImage]);
-
-  useEffect(() => {
-    const handleMove = (e: MouseEvent | TouchEvent) => {
-      if (!isDragging || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const x = "touches" in e ? e.touches[0].clientX : e.clientX;
-      const relativeX = Math.max(0, Math.min(x - rect.left, rect.width));
-      const percentage = (relativeX / rect.width) * 100;
-      setSliderPosition(percentage);
-    };
-
-    const handleUp = () => {
-      setIsDragging(false);
-    };
-
-    if (isDragging) {
-      window.addEventListener("mousemove", handleMove);
-      window.addEventListener("mouseup", handleUp);
-      window.addEventListener("touchmove", handleMove);
-      window.addEventListener("touchend", handleUp);
-    }
-
-    return () => {
-      window.removeEventListener("mousemove", handleMove);
-      window.removeEventListener("mouseup", handleUp);
-      window.removeEventListener("touchmove", handleMove);
-      window.removeEventListener("touchend", handleUp);
-    };
-  }, [isDragging]);
 
   return (
     <div className="min-h-screen bg-background pt-6 pb-10 px-4 md:px-6 flex flex-col items-center font-sans relative">
@@ -394,47 +303,37 @@ const Visualizer: React.FC<VisualizerProps> = ({
             <div className="text-xs text-zinc-400">Drag to compare</div>
           </div>
 
-          <div
-            ref={containerRef}
-            className="relative h-[380px] bg-zinc-100 overflow-hidden select-none touch-none"
-          >
-            <div className="absolute inset-0">
-              {initialImage && (
-                <img
-                  src={initialImage}
-                  alt="Before"
-                  className="w-full h-full object-contain"
-                />
-              )}
-            </div>
-
-            {currentImage && (
-              <div
-                className="absolute inset-0 overflow-hidden"
-                style={{ width: `${sliderPosition}%` }}
-              >
-                <img
-                  src={currentImage}
-                  alt="After"
-                  className="absolute top-0 left-0 max-w-none h-full object-contain"
-                  style={{
-                    width: containerDimensions.width || "100%",
-                    height: containerDimensions.height || "100%",
-                  }}
-                />
+          <div className="relative bg-zinc-100 overflow-hidden">
+            {initialImage && currentImage ? (
+              <ReactCompareSlider
+                defaultPosition={50}
+                style={{ width: "100%", height: "auto" }}
+                itemOne={
+                  <ReactCompareSliderImage
+                    src={initialImage}
+                    alt="Before"
+                    className="w-full h-auto object-contain"
+                  />
+                }
+                itemTwo={
+                  <ReactCompareSliderImage
+                    src={currentImage}
+                    alt="After"
+                    className="w-full h-auto object-contain"
+                  />
+                }
+              />
+            ) : (
+              <div className="flex items-center justify-center">
+                {initialImage && (
+                  <img
+                    src={initialImage}
+                    alt="Before"
+                    className="w-full h-auto object-contain"
+                  />
+                )}
               </div>
             )}
-
-            <div
-              className="absolute top-0 bottom-0 w-1 bg-white cursor-ew-resize z-20 shadow-[0_0_10px_rgba(0,0,0,0.5)]"
-              style={{ left: `${sliderPosition}%` }}
-              onMouseDown={() => setIsDragging(true)}
-              onTouchStart={() => setIsDragging(true)}
-            >
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg border border-zinc-200 transform transition-transform hover:scale-110 active:scale-95">
-                <MoveHorizontal size={16} className="text-black" />
-              </div>
-            </div>
           </div>
         </div>
       </div>
