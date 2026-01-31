@@ -5,19 +5,6 @@ import { Button } from "./ui/Button";
 import { puter } from "@heyputer/puter.js";
 import { ROOMIFY_RENDER_PROMPT } from "../constants";
 
-interface VisualizerProps {
-  onBack: () => void;
-  initialImage: string | null;
-  onRenderComplete?: (payload: {
-    renderedImage: string;
-    renderedPath?: string;
-  }) => void;
-  onShare?: (image: string) => Promise<void> | void;
-  projectName?: string;
-  projectId?: string;
-  initialRender?: string;
-}
-
 const Visualizer: React.FC<VisualizerProps> = ({
   onBack,
   initialImage,

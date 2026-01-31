@@ -1,7 +1,6 @@
 import React from "react";
 import { useNavigate, useOutletContext } from "react-router";
 import Landing from "../../components/Landing";
-import type { AppContext } from "../root";
 
 export default function IndexRoute() {
   const navigate = useNavigate();

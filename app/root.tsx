@@ -2,30 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 import { puter } from "@heyputer/puter.js";
 import { PUTER_WORKER_URL } from "../constants";
-import type { DesignHistoryItem } from "../types";
 import "../index.css";
-
-export type AppContext = {
-  designHistory: DesignHistoryItem[];
-  publicProjects: DesignHistoryItem[];
-  isLoadingHistory: boolean;
-  isLoadingPublic: boolean;
-  uploadedImage: string | null;
-  currentSessionId: string | null;
-  selectedInitialRender: string | null;
-  setDesignHistory: React.Dispatch<React.SetStateAction<DesignHistoryItem[]>>;
-  setPublicProjects: React.Dispatch<React.SetStateAction<DesignHistoryItem[]>>;
-  setUploadedImage: React.Dispatch<React.SetStateAction<string | null>>;
-  setCurrentSessionId: React.Dispatch<React.SetStateAction<string | null>>;
-  setSelectedInitialRender: React.Dispatch<React.SetStateAction<string | null>>;
-  fetchProjectById: (id: string, scope: "user" | "public") => Promise<DesignHistoryItem | null>;
-  saveProject: (item: DesignHistoryItem, share?: boolean) => Promise<void>;
-  handleRenderComplete: (payload: { renderedImage: string; renderedPath?: string }) => void;
-  handleShareCurrent: (image: string) => Promise<void>;
-  handleSignIn: () => Promise<void>;
-  fetchHistory: () => Promise<void>;
-  fetchPublicProjects: () => Promise<void>;
-};
 
 export default function Root() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);

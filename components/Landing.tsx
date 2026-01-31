@@ -10,18 +10,6 @@ import {
 } from "lucide-react";
 import { Button } from "./ui/Button";
 import Upload from "./Upload";
-import { DesignHistoryItem } from "../types";
-
-interface LandingProps {
-  onStart: (file: string) => void;
-  history: DesignHistoryItem[];
-  onSelectHistory: (id: string) => void;
-  onSelectPublic: (item: DesignHistoryItem) => void;
-  onSignIn: () => Promise<void>;
-  isLoadingHistory: boolean;
-  publicProjects: DesignHistoryItem[];
-  isLoadingPublic: boolean;
-}
 
 const Landing: React.FC<LandingProps> = ({
   onStart,

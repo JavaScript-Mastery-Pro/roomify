@@ -1,13 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation, useNavigate, useOutletContext, useParams } from "react-router";
 import Visualizer from "../../components/Visualizer";
-import type { AppContext } from "../root";
-import type { DesignHistoryItem } from "../../types";
-
-type VisualizerLocationState = {
-  initialImage?: string;
-  initialRender?: string | null;
-};
 
 export default function VisualizerRoute() {
   const { id } = useParams();

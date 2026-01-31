@@ -1,5 +1,3 @@
-import { Material } from './types';
-
 export const WALL_MATERIALS: Material[] = [
   { id: 'w1', name: 'Polar White', thumbnail: '#f8fafc', type: 'color', category: 'wall' },
   { id: 'w2', name: 'Warm Beige', thumbnail: '#e7e5e4', type: 'color', category: 'wall' },

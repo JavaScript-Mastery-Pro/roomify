@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Upload as UploadIcon, FileText, CheckCircle2, ArrowUp, Image as ImageIcon } from 'lucide-react';
 
-interface UploadProps {
-  onComplete: (base64File: string) => void;
-  className?: string;
-}
-
 const Upload: React.FC<UploadProps> = ({ onComplete, className = '' }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [file, setFile] = useState<File | null>(null);
