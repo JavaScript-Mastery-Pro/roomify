@@ -1,6 +1,6 @@
 import path from 'path';
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import { reactRouter } from '@react-router/dev/vite';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig(() => ({
@@ -8,7 +8,7 @@ export default defineConfig(() => ({
     port: 3000,
     host: '0.0.0.0',
   },
-  plugins: [tailwindcss(), react()],
+  plugins: [tailwindcss(), reactRouter()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),

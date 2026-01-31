@@ -1,11 +1,18 @@
-export type ViewState = 'landing' | 'upload' | 'visualizer';
-
 export interface Material {
   id: string;
   name: string;
   thumbnail: string; // Color code or image url
   type: 'color' | 'texture';
   category: 'floor' | 'wall' | 'furniture';
+}
+
+export interface DesignHistoryItem {
+  id: string;
+  sourceImage: string;
+  sourcePath?: string;
+  renderedImage?: string;
+  renderedPath?: string;
+  timestamp: number;
 }
 
 export interface DesignConfig {

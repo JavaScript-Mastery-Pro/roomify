@@ -1,14 +1,27 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Box, Download, MoveHorizontal, RefreshCw, Share2, X, AlertTriangle } from "lucide-react";
+import {
+  Box,
+  Download,
+  MoveHorizontal,
+  RefreshCw,
+  Share2,
+  X,
+  AlertTriangle,
+} from "lucide-react";
 import { Button } from "./ui/Button";
 import { puter } from "@heyputer/puter.js";
 
 interface VisualizerProps {
   onBack: () => void;
   initialImage: string | null;
-  onRenderComplete?: (image: string) => void;
+  onRenderComplete?: (payload: {
+    renderedImage: string;
+    renderedPath?: string;
+  }) => void;
   onShare?: (image: string) => Promise<void> | void;
   projectName?: string;
+  projectId?: string;
+  initialRender?: string;
 }
 
 const Visualizer: React.FC<VisualizerProps> = ({
@@ -17,18 +30,27 @@ const Visualizer: React.FC<VisualizerProps> = ({
   onRenderComplete,
   onShare,
   projectName,
+  projectId,
+  initialRender,
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [authRequired, setAuthRequired] = useState(false);
-  const [currentImage, setCurrentImage] = useState<string | null>(null);
-  const [shareStatus, setShareStatus] = useState<"idle" | "saving" | "done">("idle");
+  const [currentImage, setCurrentImage] = useState<string | null>(
+    initialRender || null,
+  );
+  const [shareStatus, setShareStatus] = useState<"idle" | "saving" | "done">(
+    "idle",
+  );
 
   const hasInitialGenerated = useRef(false);
 
   const [sliderPosition, setSliderPosition] = useState(50);
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
+  const [containerDimensions, setContainerDimensions] = useState({
+    width: 0,
+    height: 0,
+  });
 
   const handleExport = () => {
     if (!currentImage) return;
@@ -121,12 +143,35 @@ const Visualizer: React.FC<VisualizerProps> = ({
         ratio: { w: 1024, h: 1024 },
       });
 
-      const newImageUrl =
+      const rawImageUrl =
         typeof response === "string"
           ? response
           : response instanceof HTMLImageElement
-          ? response.src
-          : null;
+            ? response.src
+            : null;
+
+      let newImageUrl = rawImageUrl;
+      let storedPath: string | undefined;
+
+      if (rawImageUrl) {
+        try {
+          const blob = await (await fetch(rawImageUrl)).blob();
+          try {
+            await puter.fs.mkdir("roomify/renders", { recursive: true });
+          } catch (error) {
+            console.warn("Failed to ensure render directory:", error);
+          }
+          const fileName = projectId
+            ? `roomify/renders/${projectId}.png`
+            : `roomify/renders/${Date.now()}.png`;
+          await puter.fs.write(fileName, blob);
+          storedPath = fileName;
+          newImageUrl = await puter.fs.getReadURL(fileName, 60 * 60 * 24 * 30);
+        } catch (error) {
+          console.error("Failed to store image in Puter FS:", error);
+          newImageUrl = rawImageUrl;
+        }
+      }
 
       if (newImageUrl) {
         setCurrentImage(newImageUrl);
@@ -134,7 +179,10 @@ const Visualizer: React.FC<VisualizerProps> = ({
           setSliderPosition(50);
         }
         if (onRenderComplete) {
-          onRenderComplete(newImageUrl);
+          onRenderComplete({
+            renderedImage: newImageUrl,
+            renderedPath: storedPath,
+          });
         }
       }
     } catch (error: any) {
@@ -148,11 +196,15 @@ const Visualizer: React.FC<VisualizerProps> = ({
   };
 
   useEffect(() => {
-    if (initialImage && !hasInitialGenerated.current) {
+    if (!initialImage || hasInitialGenerated.current) return;
+    if (initialRender) {
+      setCurrentImage(initialRender);
       hasInitialGenerated.current = true;
-      generate3DView(true);
+      return;
     }
-  }, [initialImage]);
+    hasInitialGenerated.current = true;
+    generate3DView(true);
+  }, [initialImage, initialRender]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -207,12 +259,19 @@ const Visualizer: React.FC<VisualizerProps> = ({
             <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertTriangle className="text-primary w-6 h-6" />
             </div>
-            <h3 className="text-xl font-serif font-bold text-black mb-2">Sign in required</h3>
+            <h3 className="text-xl font-serif font-bold text-black mb-2">
+              Sign in required
+            </h3>
             <p className="text-zinc-600 text-sm mb-6 leading-relaxed">
-              Sign in with your Puter account to generate and share visualizations.
+              Sign in with your Puter account to generate and share
+              visualizations.
             </p>
             <div className="flex flex-col space-y-3">
-              <Button onClick={handleSignIn} fullWidth className="bg-primary hover:bg-orange-600 text-white">
+              <Button
+                onClick={handleSignIn}
+                fullWidth
+                className="bg-primary hover:bg-orange-600 text-white"
+              >
                 Sign in with Puter
               </Button>
               <button
@@ -230,11 +289,21 @@ const Visualizer: React.FC<VisualizerProps> = ({
       )}
 
       <nav className="w-full max-w-6xl flex items-center justify-between mb-6 px-2">
-        <div className="flex items-center space-x-2 cursor-pointer" onClick={onBack}>
+        <div
+          className="flex items-center space-x-2 cursor-pointer"
+          onClick={onBack}
+        >
           <Box className="w-6 h-6 text-black" />
-          <span className="text-xl font-serif font-bold text-black tracking-tight">Roomify</span>
+          <span className="text-xl font-serif font-bold text-black tracking-tight">
+            Roomify
+          </span>
         </div>
-        <Button variant="ghost" size="sm" onClick={onBack} className="text-zinc-500 hover:text-black hover:bg-zinc-100">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onBack}
+          className="text-zinc-500 hover:text-black hover:bg-zinc-100"
+        >
           <X className="w-5 h-5 mr-2" /> Exit Editor
         </Button>
       </nav>
@@ -243,7 +312,9 @@ const Visualizer: React.FC<VisualizerProps> = ({
         <div className="bg-white rounded-xl border border-zinc-200 shadow-2xl overflow-hidden">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-5 border-b border-zinc-100">
             <div>
-              <p className="text-xs font-mono uppercase tracking-widest text-zinc-400">Project</p>
+              <p className="text-xs font-mono uppercase tracking-widest text-zinc-400">
+                Project
+              </p>
               <h2 className="text-2xl font-serif font-bold text-black">
                 {projectName || "Untitled Project"}
               </h2>
@@ -261,10 +332,16 @@ const Visualizer: React.FC<VisualizerProps> = ({
                 size="sm"
                 onClick={handleShare}
                 className="bg-black text-white h-9 shadow-sm hover:bg-zinc-800"
-                disabled={!currentImage || isProcessing || shareStatus === "saving"}
+                disabled={
+                  !currentImage || isProcessing || shareStatus === "saving"
+                }
               >
                 <Share2 className="w-4 h-4 mr-2" />
-                {shareStatus === "saving" ? "Sharing…" : shareStatus === "done" ? "Shared" : "Share"}
+                {shareStatus === "saving"
+                  ? "Sharing…"
+                  : shareStatus === "done"
+                    ? "Shared"
+                    : "Share"}
               </Button>
             </div>
           </div>
@@ -279,7 +356,11 @@ const Visualizer: React.FC<VisualizerProps> = ({
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 {initialImage && (
-                  <img src={initialImage} alt="Original" className="w-full h-full object-contain opacity-50" />
+                  <img
+                    src={initialImage}
+                    alt="Original"
+                    className="w-full h-full object-contain opacity-50"
+                  />
                 )}
               </div>
             )}
@@ -288,8 +369,12 @@ const Visualizer: React.FC<VisualizerProps> = ({
               <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-white/60 backdrop-blur-sm transition-opacity duration-300">
                 <div className="bg-white px-6 py-4 rounded-xl border border-zinc-200 flex flex-col items-center shadow-2xl">
                   <RefreshCw className="w-8 h-8 mb-3 animate-spin text-primary" />
-                  <span className="text-sm font-bold text-black">Rendering…</span>
-                  <span className="text-xs text-zinc-500 mt-1">Generating your 3D visualization</span>
+                  <span className="text-sm font-bold text-black">
+                    Rendering…
+                  </span>
+                  <span className="text-xs text-zinc-500 mt-1">
+                    Generating your 3D visualization
+                  </span>
                 </div>
               </div>
             )}
@@ -299,8 +384,12 @@ const Visualizer: React.FC<VisualizerProps> = ({
         <div className="bg-white rounded-xl border border-zinc-200 shadow-xl overflow-hidden">
           <div className="flex items-center justify-between p-5 border-b border-zinc-100">
             <div>
-              <p className="text-xs font-mono uppercase tracking-widest text-zinc-400">Comparison</p>
-              <h3 className="text-lg font-serif font-bold text-black">Before vs After</h3>
+              <p className="text-xs font-mono uppercase tracking-widest text-zinc-400">
+                Comparison
+              </p>
+              <h3 className="text-lg font-serif font-bold text-black">
+                Before vs After
+              </h3>
             </div>
             <div className="text-xs text-zinc-400">Drag to compare</div>
           </div>
@@ -310,11 +399,20 @@ const Visualizer: React.FC<VisualizerProps> = ({
             className="relative h-[380px] bg-zinc-100 overflow-hidden select-none touch-none"
           >
             <div className="absolute inset-0">
-              {initialImage && <img src={initialImage} alt="Before" className="w-full h-full object-contain" />}
+              {initialImage && (
+                <img
+                  src={initialImage}
+                  alt="Before"
+                  className="w-full h-full object-contain"
+                />
+              )}
             </div>
 
             {currentImage && (
-              <div className="absolute inset-0 overflow-hidden" style={{ width: `${sliderPosition}%` }}>
+              <div
+                className="absolute inset-0 overflow-hidden"
+                style={{ width: `${sliderPosition}%` }}
+              >
                 <img
                   src={currentImage}
                   alt="After"
