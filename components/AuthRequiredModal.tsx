@@ -13,29 +13,21 @@ const AuthRequiredModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="absolute inset-0 z-60 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 text-center border border-zinc-200">
-        <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <AlertTriangle className="text-primary w-6 h-6" />
+    <div className="auth-modal animate-in fade-in duration-200">
+      <div className="panel">
+        <div className="icon">
+          <AlertTriangle className="alert" />
         </div>
-        <h3 className="text-xl font-serif font-bold text-black mb-2">
-          {title}
-        </h3>
-        <p className="text-zinc-600 text-sm mb-6 leading-relaxed">
-          {description}
-        </p>
-        <div className="flex flex-col space-y-3">
-          <Button
-            onClick={onConfirm}
-            fullWidth
-            className="bg-primary hover:bg-orange-600 text-white"
-          >
+
+        <h3>{title}</h3>
+        <p>{description}</p>
+
+        <div className="actions">
+          <Button onClick={onConfirm} fullWidth className="confirm">
             {confirmLabel}
           </Button>
-          <button
-            onClick={onCancel}
-            className="text-xs text-zinc-400 hover:text-black mt-2"
-          >
+
+          <button onClick={onCancel} className="cancel">
             Cancel
           </button>
         </div>

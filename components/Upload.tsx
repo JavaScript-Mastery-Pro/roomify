@@ -103,62 +103,50 @@ const Upload = ({ onComplete, className = "" }: UploadProps) => {
   }, [progress, base64Data, onComplete]);
 
   return (
-    <div className={`w-full ${className}`}>
+    <div className={`upload ${className}`}>
       {!file ? (
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`
-              relative h-48 rounded-xl border-2 border-dashed transition-all duration-300 flex flex-col items-center justify-center cursor-pointer group bg-zinc-50
-              ${isDragging ? "border-primary bg-orange-50" : "border-zinc-200 hover:border-zinc-300 hover:bg-zinc-100"}
-            `}
+          className={`dropzone ${isDragging ? "is-dragging" : ""}`}
         >
           <input
             type="file"
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+            className="drop-input"
             onChange={handleFileSelect}
             accept=".jpg,.jpeg,.png"
           />
 
-          <div className="flex flex-col items-center pointer-events-none">
-            <div
-              className={`
-                    w-12 h-12 rounded-full flex items-center justify-center mb-4 transition-colors
-                    ${isDragging ? "bg-orange-100 text-primary" : "bg-zinc-200 text-zinc-500 group-hover:bg-zinc-300 group-hover:text-black"}
-                `}
-            >
+          <div className="drop-content">
+            <div className="drop-icon">
               <UploadIcon size={20} />
             </div>
-            <p className="text-zinc-900 font-bold text-sm mb-1">
-              Click to upload or drag and drop
-            </p>
-            <p className="text-zinc-500 text-xs">Maximum file size 50 MB.</p>
+            <p>Click to upload or drag and drop</p>
+            <p className="help">Maximum file size 50 MB.</p>
           </div>
         </div>
       ) : (
-        <div className="h-48 rounded-xl border border-zinc-200 bg-white p-6 flex flex-col justify-center relative overflow-hidden">
-          <div className="relative z-10 flex flex-col items-center justify-center text-center">
-            <div className="w-12 h-12 rounded-lg bg-zinc-100 flex items-center justify-center text-black mb-3 border border-zinc-200">
+        <div className="upload-status">
+          <div className="status-content">
+            <div className="status-icon">
               {progress === 100 ? (
-                <CheckCircle2 className="text-green-500" />
+                <CheckCircle2 className="check" />
               ) : (
-                <ImageIcon />
+                <ImageIcon className="image" />
               )}
             </div>
 
-            <h3 className="text-black font-bold text-sm truncate max-w-full px-4">
-              {file.name}
-            </h3>
+            <h3>{file.name}</h3>
 
-            <div className="w-full max-w-50 h-1.5 bg-zinc-100 rounded-full mt-3 overflow-hidden">
+            <div className="progress">
               <div
-                className="h-full bg-primary transition-all duration-300 ease-out"
+                className="bar"
                 style={{ width: `${progress}%` }}
               />
             </div>
 
-            <p className="text-zinc-500 text-xs font-mono uppercase mt-2">
+            <p className="status-text">
               {progress < 100 ? "Analyzing Floor Plan..." : "Redirecting..."}
             </p>
           </div>

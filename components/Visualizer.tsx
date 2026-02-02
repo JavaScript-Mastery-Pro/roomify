@@ -139,7 +139,7 @@ const Visualizer = ({
   }, [initialImage, initialRender]);
 
   return (
-    <div className="min-h-screen bg-background pt-6 pb-10 px-4 md:px-6 flex flex-col items-center font-sans relative">
+    <div className="visualizer">
       <AuthRequiredModal
         isOpen={authRequired}
         onConfirm={async () => {
@@ -162,47 +162,38 @@ const Visualizer = ({
         description="Sign in with your Puter account to generate and share visualizations."
       />
 
-      <nav className="w-full max-w-6xl flex items-center justify-between mb-6 px-2">
-        <div
-          className="flex items-center space-x-2 cursor-pointer"
-          onClick={onBack}
-        >
-          <Box className="w-6 h-6 text-black" />
-          <span className="text-xl font-serif font-bold text-black tracking-tight">
-            Roomify
-          </span>
+      <nav className="topbar">
+        <div className="brand" onClick={onBack}>
+          <Box className="logo" />
+          <span className="name">Roomify</span>
         </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className="text-zinc-500 hover:text-black hover:bg-zinc-100"
+          className="exit"
         >
-          <X className="w-5 h-5 mr-2" /> Exit Editor
+          <X className="icon" /> Exit Editor
         </Button>
       </nav>
 
-      <div className="w-full max-w-6xl grid grid-cols-1 gap-6">
-        <div className="bg-white rounded-xl border border-zinc-200 shadow-2xl overflow-hidden">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-5 border-b border-zinc-100">
-            <div>
-              <p className="text-xs font-mono uppercase tracking-widest text-zinc-400">
-                Project
-              </p>
-              <h2 className="text-2xl font-serif font-bold text-black">
-                {projectName || "Untitled Project"}
-              </h2>
-              <p className="text-xs text-zinc-500 mt-1">
+      <div className="content">
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-meta">
+              <p>Project</p>
+              <h2>{projectName || "Untitled Project"}</h2>
+              <p className="note">
                 {isPublic
                   ? `Shared by ${sharedBy || "Unknown"}`
                   : "Created by You"}
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="panel-actions">
               <Button
                 size="sm"
                 onClick={handleExport}
-                className="bg-primary text-white hover:bg-orange-600 h-9 border-none shadow-sm"
+                className="export"
                 disabled={!currentImage}
               >
                 <Download className="w-4 h-4 mr-2" /> Export
@@ -210,7 +201,7 @@ const Visualizer = ({
               <Button
                 size="sm"
                 onClick={handleShareToggle}
-                className="bg-black text-white h-9 shadow-sm hover:bg-zinc-800"
+                className="share"
                 disabled={
                   !currentImage ||
                   isProcessing ||
@@ -236,33 +227,33 @@ const Visualizer = ({
             </div>
           </div>
 
-          <div className="relative bg-zinc-100 min-h-105">
+          <div
+            className={`render-area ${isProcessing ? "is-processing" : ""}`}
+          >
             {currentImage ? (
               <img
                 src={currentImage}
                 alt="AI Render"
-                className={`w-full h-full object-contain transition-all duration-700 ${isProcessing ? "opacity-50 blur-sm scale-105" : "opacity-100 scale-100"}`}
+                className="render-img"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
+              <div className="render-placeholder">
                 {initialImage && (
                   <img
                     src={initialImage}
                     alt="Original"
-                    className="w-full h-full object-contain opacity-50"
+                    className="render-fallback"
                   />
                 )}
               </div>
             )}
 
             {isProcessing && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-white/60 backdrop-blur-sm transition-opacity duration-300">
-                <div className="bg-white px-6 py-4 rounded-xl border border-zinc-200 flex flex-col items-center shadow-2xl">
-                  <RefreshCw className="w-8 h-8 mb-3 animate-spin text-primary" />
-                  <span className="text-sm font-bold text-black">
-                    Rendering…
-                  </span>
-                  <span className="text-xs text-zinc-500 mt-1">
+              <div className="render-overlay">
+                <div className="rendering-card">
+                  <RefreshCw className="spinner" />
+                  <span className="title">Rendering…</span>
+                  <span className="subtitle">
                     Generating your 3D visualization
                   </span>
                 </div>
@@ -271,20 +262,16 @@ const Visualizer = ({
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-zinc-200 shadow-xl overflow-hidden">
-          <div className="flex items-center justify-between p-5 border-b border-zinc-100">
-            <div>
-              <p className="text-xs font-mono uppercase tracking-widest text-zinc-400">
-                Comparison
-              </p>
-              <h3 className="text-lg font-serif font-bold text-black">
-                Before vs After
-              </h3>
+        <div className="panel compare">
+          <div className="panel-header">
+            <div className="panel-meta">
+              <p>Comparison</p>
+              <h3>Before vs After</h3>
             </div>
-            <div className="text-xs text-zinc-400">Drag to compare</div>
+            <div className="hint">Drag to compare</div>
           </div>
 
-          <div className="relative bg-zinc-100 overflow-hidden">
+          <div className="compare-stage">
             {initialImage && currentImage ? (
               <ReactCompareSlider
                 defaultValue={50}
@@ -293,24 +280,24 @@ const Visualizer = ({
                   <ReactCompareSliderImage
                     src={initialImage}
                     alt="Before"
-                    className="w-full h-auto object-contain"
+                    className="compare-img"
                   />
                 }
                 itemTwo={
                   <ReactCompareSliderImage
                     src={currentImage}
                     alt="After"
-                    className="w-full h-auto object-contain"
+                    className="compare-img"
                   />
                 }
               />
             ) : (
-              <div className="flex items-center justify-center">
+              <div className="compare-fallback">
                 {initialImage && (
                   <img
                     src={initialImage}
                     alt="Before"
-                    className="w-full h-auto object-contain"
+                    className="compare-img"
                   />
                 )}
               </div>
