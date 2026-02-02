@@ -1,16 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router";
-import {
-  ArrowRight,
-  ArrowUpRight,
-  Box,
-  Clock,
-  Layers,
-  Shield,
-  Zap,
-} from "lucide-react";
-
-import RefreshCwIcon from "@/assets/RefreshCwIcon";
+import { ArrowRight, ArrowUpRight, Clock, Layers } from "lucide-react";
 
 import Upload from "@/components/Upload";
 import Navbar from "@/components/Navbar";
@@ -204,30 +194,6 @@ export default function IndexRoute() {
         </div>
       </section>
 
-      <section className="partners">
-        <div className="section-inner">
-          <div className="logos">
-            <LogoPlaceholder text="Delve" icon={<Layers />} />
-            <LogoPlaceholder text="Loops" icon={<RefreshCwIcon />} />
-            <LogoPlaceholder text="Vanta" icon={<Shield />} />
-            <LogoPlaceholder text="Greptile" icon={<Zap />} />
-            <LogoPlaceholder text="Mixpanel" icon={<Box />} />
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
-
-const LogoPlaceholder = ({
-  text,
-  icon,
-}: {
-  text: string;
-  icon: React.ReactNode;
-}) => (
-  <div className="logo-item group">
-    <div>{icon}</div>
-    <span>{text}</span>
-  </div>
-);
