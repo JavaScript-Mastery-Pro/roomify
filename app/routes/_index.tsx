@@ -9,9 +9,7 @@ import {
   Shield,
   Zap,
 } from "lucide-react";
-import { puter } from "@heyputer/puter.js";
 
-import { PUTER_WORKER_URL } from "@/constants";
 import RefreshCwIcon from "@/assets/RefreshCwIcon";
 
 import Upload from "@/components/Upload";
@@ -71,50 +69,36 @@ export default function IndexRoute() {
   const hasHistory = designHistory.length > 0;
 
   return (
-    <div className="min-h-screen bg-background relative overflow-x-hidden text-foreground">
+    <div className="home">
       <Navbar />
 
-      <section className="pt-32 pb-20 px-6 max-w-7xl mx-auto flex flex-col items-center text-center">
-        <div className="mb-8 inline-flex items-center px-3 py-1 rounded-md bg-white border border-zinc-200 shadow-sm">
-          <div className="w-4 h-4 rounded bg-blue-100 flex items-center justify-center mr-2">
-            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+      <section className="hero">
+        <div className="announce">
+          <div className="dot">
+            <div className="pulse"></div>
           </div>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">
-            Introducing Roomify 2.0
-          </span>
+          <span>Introducing Roomify 2.0</span>
         </div>
 
-        <h1 className="text-6xl md:text-8xl font-serif leading-[0.95] text-black mb-8 max-w-5xl mx-auto">
-          Build beautiful spaces at the speed of thought with Roomify_
-        </h1>
+        <h1>Build beautiful spaces at the speed of thought with Roomify_</h1>
 
-        <p className="max-w-2xl mx-auto text-xs md:text-sm font-mono uppercase tracking-widest text-zinc-500 mb-10 leading-relaxed">
+        <p className="subtitle">
           Roomify is an AI-first design environment that helps you visualize,
           render, and ship architectural projects faster than ever.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-          <a
-            href="#upload"
-            className="inline-flex items-center justify-center rounded-md  transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background px-8 py-3 text-sm uppercase tracking-wide font-bold bg-primary text-white hover:bg-[#ea580c] shadow-md"
-          >
-            Start Building <ArrowRight className="ml-2 w-4 h-4" />
+        <div className="actions">
+          <a href="#upload" className="cta">
+            Start Building <ArrowRight className="icon" />
           </a>
-          <Button
-            variant="outline"
-            size="lg"
-            className="px-8 bg-white rounded-md hover:bg-zinc-50"
-          >
+          <Button variant="outline" size="lg" className="demo">
             Watch Demo
           </Button>
         </div>
 
-        <div
-          id="upload"
-          className="w-full max-w-5xl mx-auto relative rounded-3xl overflow-hidden bg-linear-to-b from-blue-100/50 to-white/50 border border-blue-100 p-6 md:p-12 shadow-sm min-h-100 flex items-center justify-center"
-        >
+        <div id="upload" className="upload-shell">
           <div
-            className="absolute inset-0 opacity-40 pointer-events-none"
+            className="grid-overlay"
             style={{
               backgroundImage:
                 "linear-gradient(#3B82F6 1px, transparent 1px), linear-gradient(90deg, #3B82F6 1px, transparent 1px)",
@@ -122,17 +106,13 @@ export default function IndexRoute() {
             }}
           ></div>
 
-          <div className="relative w-full max-w-xl bg-white rounded-2xl shadow-xl overflow-hidden border border-zinc-100 p-8 z-10 transition-transform hover:scale-[1.01] duration-500">
-            <div className="text-center mb-6">
-              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Layers className="text-orange-500 w-6 h-6" />
+          <div className="upload-card">
+            <div className="upload-head">
+              <div className="upload-icon">
+                <Layers className="icon" />
               </div>
-              <h3 className="text-xl font-serif font-bold text-black">
-                Upload your floor plan
-              </h3>
-              <p className="text-zinc-500 text-sm mt-1">
-                Supports JPG, PNG formats up to 10MB
-              </p>
+              <h3>Upload your floor plan</h3>
+              <p>Supports JPG, PNG formats up to 10MB</p>
             </div>
 
             <Upload onComplete={handleUploadComplete} />
@@ -140,12 +120,12 @@ export default function IndexRoute() {
         </div>
       </section>
 
-      <section className="py-24 bg-white relative border-b border-zinc-100">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
-            <div className="max-w-2xl">
-              <h2 className="text-4xl font-serif text-black mb-4">Projects</h2>
-              <p className="text-zinc-500 text-lg">
+      <section className="projects">
+        <div className="section-inner">
+          <div className="section-head">
+            <div className="copy">
+              <h2>Projects</h2>
+              <p>
                 Your latest work and shared community projects, all in one
                 place.
               </p>
@@ -153,11 +133,9 @@ export default function IndexRoute() {
           </div>
 
           {isLoadingHistory ? (
-            <div className="flex items-center justify-center text-sm text-zinc-500">
-              Loading your projects…
-            </div>
+            <div className="loading">Loading your projects…</div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="projects-grid">
               {hasHistory ? (
                 designHistory.map((item, index) => {
                   const ownerLabel = item.isPublic
@@ -184,39 +162,32 @@ export default function IndexRoute() {
                           },
                         );
                       }}
-                      className="group relative bg-white rounded-xl overflow-hidden border border-zinc-200 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col h-full"
+                      className="project-card group"
                     >
-                      <div className="aspect-4/3 overflow-hidden bg-zinc-100 relative">
+                      <div className="preview">
                         <img
                           src={item.renderedImage || item.sourceImage}
                           alt={`Project ${designHistory.length - index}`}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                         />
                         {item.isPublic && (
-                          <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-2 py-1 rounded-md border border-zinc-200 shadow-sm">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-800">
-                              Community
-                            </span>
+                          <div className="badge">
+                            <span>Community</span>
                           </div>
                         )}
                       </div>
 
-                      <div className="p-5 flex justify-between items-center bg-white border-t border-zinc-100 grow">
+                      <div className="card-body">
                         <div>
-                          <h3 className="text-lg font-serif font-bold text-zinc-900 group-hover:text-primary transition-colors">
-                            {name}
-                          </h3>
-                          <div className="flex items-center text-zinc-400 text-xs mt-1 space-x-2">
+                          <h3>{name}</h3>
+                          <div className="meta">
                             <Clock size={12} />
-                            <span className="font-mono uppercase">
+                            <span>
                               {new Date(item.timestamp).toLocaleDateString()}
                             </span>
-                            <span className="text-zinc-400 text-[10px] uppercase tracking-wide">
-                              By {ownerLabel}
-                            </span>
+                            <span>By {ownerLabel}</span>
                           </div>
                         </div>
-                        <div className="w-10 h-10 rounded-full bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-400 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-300">
+                        <div className="arrow">
                           <ArrowUpRight size={18} />
                         </div>
                       </div>
@@ -224,7 +195,7 @@ export default function IndexRoute() {
                   );
                 })
               ) : (
-                <div className="col-span-full rounded-xl border border-dashed border-zinc-200 bg-zinc-50 p-10 text-center text-sm text-zinc-500">
+                <div className="empty">
                   No projects yet. Upload a floor plan to create your first one.
                 </div>
               )}
@@ -233,9 +204,9 @@ export default function IndexRoute() {
         </div>
       </section>
 
-      <section className="border-t border-zinc-200 py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 items-center opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+      <section className="partners">
+        <div className="section-inner">
+          <div className="logos">
             <LogoPlaceholder text="Delve" icon={<Layers />} />
             <LogoPlaceholder text="Loops" icon={<RefreshCwIcon />} />
             <LogoPlaceholder text="Vanta" icon={<Shield />} />
@@ -255,12 +226,8 @@ const LogoPlaceholder = ({
   text: string;
   icon: React.ReactNode;
 }) => (
-  <div className="flex items-center justify-center space-x-2 group cursor-pointer">
-    <div className="text-zinc-800 group-hover:text-black transition-colors">
-      {icon}
-    </div>
-    <span className="font-bold text-xl text-zinc-800 group-hover:text-black transition-colors tracking-tight">
-      {text}
-    </span>
+  <div className="logo-item group">
+    <div>{icon}</div>
+    <span>{text}</span>
   </div>
 );

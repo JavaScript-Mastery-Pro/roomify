@@ -398,4 +398,196 @@
       }
     }
   }
+
+  .home {
+    @apply min-h-screen bg-background relative overflow-x-hidden text-foreground;
+
+    .hero {
+      @apply pt-32 pb-20 px-6 max-w-7xl mx-auto flex flex-col items-center text-center;
+
+      .announce {
+        @apply mb-8 inline-flex items-center px-3 py-1 rounded-md bg-white border border-zinc-200 shadow-sm;
+
+        .dot {
+          @apply w-4 h-4 rounded bg-blue-100 flex items-center justify-center mr-2;
+
+          .pulse {
+            @apply w-2 h-2 rounded-full bg-blue-500 animate-pulse;
+          }
+        }
+
+        span {
+          @apply text-[10px] font-bold uppercase tracking-widest text-zinc-600;
+        }
+      }
+
+      h1 {
+        @apply text-6xl md:text-8xl font-serif leading-[0.95] text-black mb-8 max-w-5xl mx-auto;
+      }
+
+      .subtitle {
+        @apply max-w-2xl mx-auto text-xs md:text-sm font-mono uppercase tracking-widest text-zinc-500 mb-10 leading-relaxed;
+      }
+
+      .actions {
+        @apply flex flex-col sm:flex-row gap-4 justify-center mb-16;
+
+        .cta {
+          @apply inline-flex items-center justify-center rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background px-8 py-3 text-sm uppercase tracking-wide font-bold bg-primary text-white hover:bg-[#ea580c] shadow-md;
+
+          .icon {
+            @apply ml-2 w-4 h-4;
+          }
+        }
+
+        .demo {
+          @apply px-8 bg-white rounded-md hover:bg-zinc-50;
+        }
+      }
+
+      .upload-shell {
+        @apply w-full max-w-5xl mx-auto relative rounded-3xl overflow-hidden bg-linear-to-b from-blue-100/50 to-white/50 border border-blue-100 p-6 md:p-12 shadow-sm min-h-100 flex items-center justify-center;
+
+        .grid-overlay {
+          @apply absolute inset-0 opacity-40 pointer-events-none;
+        }
+
+        .upload-card {
+          @apply relative w-full max-w-xl bg-white rounded-2xl shadow-xl overflow-hidden border border-zinc-100 p-8 z-10 transition-transform hover:scale-[1.01] duration-500;
+
+          .upload-head {
+            @apply text-center mb-6;
+
+            .upload-icon {
+              @apply w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3;
+
+              .icon {
+                @apply text-orange-500 w-6 h-6;
+              }
+            }
+
+            h3 {
+              @apply text-xl font-serif font-bold text-black;
+            }
+
+            p {
+              @apply text-zinc-500 text-sm mt-1;
+            }
+          }
+        }
+      }
+    }
+
+    .projects {
+      @apply py-24 bg-white relative border-b border-zinc-100;
+
+      .section-inner {
+        @apply max-w-7xl mx-auto px-6;
+
+        .section-head {
+          @apply flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6;
+
+          .copy {
+            @apply max-w-2xl;
+
+            h2 {
+              @apply text-4xl font-serif text-black mb-4;
+            }
+
+            p {
+              @apply text-zinc-500 text-lg;
+            }
+          }
+        }
+
+        .loading {
+          @apply flex items-center justify-center text-sm text-zinc-500;
+        }
+
+        .projects-grid {
+          @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8;
+
+          .project-card {
+            @apply relative bg-white rounded-xl overflow-hidden border border-zinc-200 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col h-full;
+
+            .preview {
+              @apply aspect-4/3 overflow-hidden bg-zinc-100 relative;
+
+              img {
+                @apply w-full h-full object-cover group-hover:scale-105 transition-transform duration-700;
+              }
+
+              .badge {
+                @apply absolute top-3 left-3 bg-white/90 backdrop-blur-md px-2 py-1 rounded-md border border-zinc-200 shadow-sm;
+
+                span {
+                  @apply text-[10px] font-bold uppercase tracking-wider text-zinc-800;
+                }
+              }
+            }
+
+            .card-body {
+              @apply p-5 flex justify-between items-center bg-white border-t border-zinc-100 grow;
+
+              h3 {
+                @apply text-lg font-serif font-bold text-zinc-900 group-hover:text-primary transition-colors;
+              }
+
+              .meta {
+                @apply flex items-center text-zinc-400 text-xs mt-1 space-x-2;
+
+                span {
+                  @apply font-mono uppercase;
+                }
+
+                span:last-child {
+                  @apply text-zinc-400 text-[10px] uppercase tracking-wide;
+                }
+              }
+
+              .arrow {
+                @apply w-10 h-10 rounded-full bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-400 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-300;
+              }
+            }
+          }
+
+          .empty {
+            @apply col-span-full rounded-xl border border-dashed border-zinc-200 bg-zinc-50 p-10 text-center text-sm text-zinc-500;
+          }
+        }
+      }
+    }
+
+    .partners {
+      @apply border-t border-zinc-200 py-12 bg-white;
+
+      .section-inner {
+        @apply max-w-7xl mx-auto px-6;
+
+        .logos {
+          @apply grid grid-cols-2 md:grid-cols-5 gap-8 items-center opacity-60 grayscale hover:grayscale-0 transition-all duration-500;
+        }
+
+        .logo-item {
+          @apply flex items-center justify-center space-x-2 cursor-pointer;
+
+          div {
+            @apply text-zinc-800 group-hover:text-black transition-colors;
+          }
+
+          span {
+            @apply font-bold text-xl text-zinc-800 group-hover:text-black transition-colors tracking-tight;
+          }
+        }
+      }
+    }
+  }
+
+  .visualizer-route {
+    @apply min-h-screen flex items-center justify-center;
+
+    &.loading {
+      @apply text-sm text-zinc-500;
+    }
+  }
 }

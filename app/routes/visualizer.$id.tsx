@@ -146,7 +146,7 @@ export default function VisualizerRoute() {
 
   if (!effectiveInitialImage && isResolving) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-sm text-zinc-500">
+      <div className="visualizer-route loading">
         Loading project…
       </div>
     );

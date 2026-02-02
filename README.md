@@ -21,6 +21,6 @@ This contains everything you need to run your app locally.
 
 This app stores project history in each user's Puter KV via a worker called with `puter.workers.exec()`.
 
-1. In Puter, upload `puter-worker.js` to your account.
-2. Deploy it with `puter.workers.create('roomify-api', 'puter-worker.js')`.
+1. In Puter, upload `lib/puter.worker.js` to your account.
+2. Deploy it with `puter.workers.create('roomify-api', 'lib/puter.worker.js')`.
 3. Set `VITE_PUTER_WORKER_URL` in `.env.local` to the deployed worker URL.

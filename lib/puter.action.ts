@@ -1,5 +1,5 @@
 import { puter } from "@heyputer/puter.js";
-import { PUTER_WORKER_URL } from "../constants";
+import { PUTER_WORKER_URL } from "./constants";
 
 export const signIn = async () => await puter.auth.signIn();
 

@@ -1,5 +1,5 @@
 import { puter } from "@heyputer/puter.js";
-import { ROOMIFY_RENDER_PROMPT } from "../constants";
+import { ROOMIFY_RENDER_PROMPT } from "@/lib/constants";
 
 export const generate3DView = async ({
   sourceImage,
