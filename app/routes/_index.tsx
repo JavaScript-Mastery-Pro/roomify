@@ -7,9 +7,7 @@ export default function IndexRoute() {
   const navigate = useNavigate();
   const {
     designHistory,
-    publicProjects,
     isLoadingHistory,
-    isLoadingPublic,
     setDesignHistory,
     setUploadedImage,
     setCurrentSessionId,
@@ -26,8 +24,10 @@ export default function IndexRoute() {
       if (!nowSignedIn) return;
     }
     const newId = Date.now().toString();
+    const name = `Residence ${newId}`;
     const newItem = {
       id: newId,
+      name,
       sourceImage: base64Image,
       renderedImage: undefined,
       timestamp: Date.now(),
@@ -39,7 +39,7 @@ export default function IndexRoute() {
     setCurrentSessionId(newId);
     setSelectedInitialRender(null);
     navigate(`/visualizer/${newId}`, {
-      state: { initialImage: base64Image, initialRender: null },
+      state: { initialImage: base64Image, initialRender: null, name },
     });
   };
 
@@ -49,23 +49,14 @@ export default function IndexRoute() {
     setUploadedImage(item.sourceImage);
     setCurrentSessionId(item.id);
     setSelectedInitialRender(item.renderedImage || null);
-    navigate(`/visualizer/${item.id}`, {
+    const ownerParam = item.ownerId ? `&ownerId=${encodeURIComponent(item.ownerId)}` : "";
+    const query = item.isPublic ? `?source=public${ownerParam}` : "";
+    navigate(`/visualizer/${item.id}${query}`, {
       state: {
         initialImage: item.sourceImage,
         initialRender: item.renderedImage || null,
-      },
-    });
-  };
-
-  const handleSelectPublic = (item: (typeof publicProjects)[number]) => {
-    const newId = Date.now().toString();
-    setUploadedImage(item.sourceImage);
-    setCurrentSessionId(newId);
-    setSelectedInitialRender(item.renderedImage || null);
-    navigate(`/visualizer/${newId}?source=public`, {
-      state: {
-        initialImage: item.sourceImage,
-        initialRender: item.renderedImage || null,
+        ownerId: item.ownerId || null,
+        name: item.name || null,
       },
     });
   };
@@ -77,9 +68,6 @@ export default function IndexRoute() {
       isLoadingHistory={isLoadingHistory}
       onSignIn={handleSignIn}
       onSelectHistory={handleSelectHistory}
-      onSelectPublic={handleSelectPublic}
-      publicProjects={publicProjects}
-      isLoadingPublic={isLoadingPublic}
     />
   );
 }

@@ -8,7 +8,6 @@ export default function VisualizerRoute() {
   const location = useLocation();
   const {
     designHistory,
-    publicProjects,
     uploadedImage,
     selectedInitialRender,
     setUploadedImage,
@@ -17,6 +16,7 @@ export default function VisualizerRoute() {
     fetchProjectById,
     handleRenderComplete,
     handleShareCurrent,
+    currentUserId,
   } = useOutletContext<AppContext>();
   const [resolvedItem, setResolvedItem] = useState<DesignHistoryItem | null>(null);
   const [isResolving, setIsResolving] = useState(false);
@@ -24,6 +24,10 @@ export default function VisualizerRoute() {
   const queryScope = useMemo(() => {
     const search = new URLSearchParams(location.search);
     return search.get("source") === "public" ? "public" : "user";
+  }, [location.search]);
+  const queryOwnerId = useMemo(() => {
+    const search = new URLSearchParams(location.search);
+    return search.get("ownerId");
   }, [location.search]);
   const isPublicProject = queryScope === "public";
 
@@ -39,9 +43,12 @@ export default function VisualizerRoute() {
     if (state.initialImage) {
       const item: DesignHistoryItem = {
         id,
+        name: state.name || null,
         sourceImage: state.initialImage,
         renderedImage: state.initialRender || undefined,
         timestamp: Date.now(),
+        ownerId: state.ownerId || queryOwnerId || null,
+        isPublic: isPublicProject,
       };
       setResolvedItem(item);
       setUploadedImage(state.initialImage);
@@ -49,7 +56,10 @@ export default function VisualizerRoute() {
       return;
     }
 
-    const localSource = queryScope === "public" ? publicProjects : designHistory;
+    const localSource =
+      queryScope === "public"
+        ? designHistory.filter((entry) => entry.isPublic)
+        : designHistory;
     const localItem = localSource.find((entry) => entry.id === id);
     if (localItem) {
       setResolvedItem(localItem);
@@ -60,7 +70,7 @@ export default function VisualizerRoute() {
 
     const resolve = async () => {
       setIsResolving(true);
-      const fetched = await fetchProjectById(id, queryScope);
+      const fetched = await fetchProjectById(id, queryScope, queryOwnerId);
       if (cancelled) return;
       if (fetched) {
         setResolvedItem(fetched);
@@ -79,8 +89,8 @@ export default function VisualizerRoute() {
     id,
     location.state,
     queryScope,
+    queryOwnerId,
     designHistory,
-    publicProjects,
     fetchProjectById,
     setUploadedImage,
     setSelectedInitialRender,
@@ -99,17 +109,27 @@ export default function VisualizerRoute() {
     );
   }
 
+  const resolvedName =
+    resolvedItem?.name || (id ? `Residence ${id}` : "Untitled Project");
+  const canUnshare =
+    isPublicProject &&
+    !!currentUserId &&
+    resolvedItem?.ownerId === currentUserId;
   return (
     <Visualizer
       onBack={() => navigate("/")}
       initialImage={effectiveInitialImage}
       onRenderComplete={handleRenderComplete}
-      onShare={handleShareCurrent}
-      projectName={id ? `Project ${id.slice(-4)}` : "Untitled Project"}
+      onShare={(image) => handleShareCurrent(image, { visibility: "public" })}
+      onUnshare={(image) =>
+        handleShareCurrent(image, { visibility: "private" })
+      }
+      projectName={resolvedName}
       projectId={id}
       initialRender={effectiveInitialRender}
       isPublic={isPublicProject}
       sharedBy={resolvedItem?.sharedBy || null}
+      canUnshare={canUnshare}
     />
   );
 }

@@ -8,11 +8,10 @@ export default function Root() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [selectedInitialRender, setSelectedInitialRender] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const [designHistory, setDesignHistory] = useState<DesignHistoryItem[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [publicProjects, setPublicProjects] = useState<DesignHistoryItem[]>([]);
-  const [isLoadingPublic, setIsLoadingPublic] = useState(false);
 
   const ensureSignedIn = useCallback(async (prompt: boolean) => {
     try {
@@ -53,34 +52,23 @@ export default function Root() {
     }
   }, [ensureSignedIn]);
 
-  const fetchPublicProjects = useCallback(async () => {
-    if (!PUTER_WORKER_URL) {
-      console.warn("Missing VITE_PUTER_WORKER_URL; skipping public projects fetch.");
-      return;
-    }
-    const canFetch = await ensureSignedIn(false);
-    if (!canFetch) return;
+  const fetchCurrentUser = useCallback(async () => {
     try {
-      setIsLoadingPublic(true);
-      const response = await puter.workers.exec(`${PUTER_WORKER_URL}/api/projects/public`, {
-        method: "GET",
-      });
-      if (!response.ok) {
-        console.error("Failed to fetch public projects:", await response.text());
+      const signedIn = await puter.auth.isSignedIn();
+      if (!signedIn) {
+        setCurrentUserId(null);
         return;
       }
-      const data = await response.json();
-      const items = Array.isArray(data?.projects) ? data.projects : [];
-      setPublicProjects(items);
+      const user = await puter.auth.getUser();
+      setCurrentUserId(user?.uuid || null);
     } catch (error) {
-      console.error("Failed to fetch public projects:", error);
-    } finally {
-      setIsLoadingPublic(false);
+      console.warn("Failed to fetch Puter user:", error);
+      setCurrentUserId(null);
     }
-  }, [ensureSignedIn]);
+  }, []);
 
   const fetchProjectById = useCallback(
-    async (id: string, scope: "user" | "public") => {
+    async (id: string, scope: "user" | "public", ownerId?: string | null) => {
       if (!PUTER_WORKER_URL) {
         console.warn("Missing VITE_PUTER_WORKER_URL; skipping project fetch.");
         return null;
@@ -90,8 +78,9 @@ export default function Root() {
         if (!canFetch) return null;
       }
       try {
+        const ownerParam = ownerId ? `&ownerId=${encodeURIComponent(ownerId)}` : "";
         const response = await puter.workers.exec(
-          `${PUTER_WORKER_URL}/api/projects/get?id=${encodeURIComponent(id)}&scope=${scope}`,
+          `${PUTER_WORKER_URL}/api/projects/get?id=${encodeURIComponent(id)}&scope=${scope}${ownerParam}`,
           { method: "GET" },
         );
         if (!response.ok) {
@@ -109,7 +98,10 @@ export default function Root() {
   );
 
   const saveProject = useCallback(
-    async (item: DesignHistoryItem, share: boolean = false) => {
+    async (
+      item: DesignHistoryItem,
+      visibility: "private" | "public" = "private",
+    ) => {
       if (!PUTER_WORKER_URL) {
         console.warn("Missing VITE_PUTER_WORKER_URL; skipping history save.");
         return;
@@ -140,7 +132,7 @@ export default function Root() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             project: payload,
-            share,
+            visibility,
             shareImageUrl: payload.renderedImage,
           }),
         });
@@ -156,8 +148,8 @@ export default function Root() {
 
   useEffect(() => {
     fetchHistory();
-    fetchPublicProjects();
-  }, [fetchHistory, fetchPublicProjects]);
+    fetchCurrentUser();
+  }, [fetchHistory, fetchCurrentUser]);
 
   const handleRenderComplete = useCallback(
     (payload: { renderedImage: string; renderedPath?: string }) => {
@@ -179,14 +171,17 @@ export default function Root() {
   );
 
   const handleShareCurrent = useCallback(
-    async (image: string) => {
+    async (image: string, opts?: { visibility?: "private" | "public" }) => {
+      const visibility = opts?.visibility || "public";
       const id = currentSessionId || Date.now().toString();
+      const existing = designHistory.find((item) => item.id === id);
       const updatedItem = {
         id,
         sourceImage: uploadedImage || "",
         renderedImage: image,
-        renderedPath: designHistory.find((item) => item.id === id)?.renderedPath,
+        renderedPath: existing?.renderedPath,
         timestamp: Date.now(),
+        isPublic: visibility === "public",
       };
 
       if (!currentSessionId) {
@@ -200,29 +195,26 @@ export default function Root() {
           : [updatedItem, ...prev];
       });
 
-      await saveProject(updatedItem, true);
-      await fetchPublicProjects();
+      await saveProject(updatedItem, visibility);
     },
-    [currentSessionId, designHistory, fetchPublicProjects, saveProject, uploadedImage],
+    [currentSessionId, designHistory, saveProject, uploadedImage],
   );
 
   const handleSignIn = useCallback(async () => {
     await puter.auth.signIn();
     await fetchHistory();
-    await fetchPublicProjects();
-  }, [fetchHistory, fetchPublicProjects]);
+    await fetchCurrentUser();
+  }, [fetchHistory, fetchCurrentUser]);
 
   const contextValue = useMemo(
     () => ({
       designHistory,
-      publicProjects,
       isLoadingHistory,
-      isLoadingPublic,
       uploadedImage,
       currentSessionId,
       selectedInitialRender,
+      currentUserId,
       setDesignHistory,
-      setPublicProjects,
       setUploadedImage,
       setCurrentSessionId,
       setSelectedInitialRender,
@@ -232,23 +224,20 @@ export default function Root() {
       handleShareCurrent,
       handleSignIn,
       fetchHistory,
-      fetchPublicProjects,
     }),
     [
       designHistory,
-      publicProjects,
       isLoadingHistory,
-      isLoadingPublic,
       uploadedImage,
       currentSessionId,
       selectedInitialRender,
+      currentUserId,
       fetchProjectById,
       saveProject,
       handleRenderComplete,
       handleShareCurrent,
       handleSignIn,
       fetchHistory,
-      fetchPublicProjects,
     ],
   );
 

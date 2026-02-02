@@ -11,16 +11,14 @@ import {
 import { Button } from "./ui/Button";
 import Upload from "./Upload";
 import { puter } from "@heyputer/puter.js";
+import RefreshCwIcon from "@/assets/RefreshCwIcon";
 
 const Landing: React.FC<LandingProps> = ({
   onStart,
   history,
   onSelectHistory,
-  onSelectPublic,
   onSignIn,
   isLoadingHistory,
-  publicProjects,
-  isLoadingPublic,
 }) => {
   const uploadRef = useRef<HTMLDivElement>(null);
   const [isSignedIn, setIsSignedIn] = useState(false);
@@ -225,17 +223,17 @@ const Landing: React.FC<LandingProps> = ({
         </div>
       </section>
 
-      {/* Your Projects Section */}
+      {/* Projects Section */}
       <section className="py-24 bg-white relative border-b border-zinc-100">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
             <div className="max-w-2xl">
               <h2 className="text-4xl font-serif text-black mb-4">
-                Your Projects
+                Projects
               </h2>
               <p className="text-zinc-500 text-lg">
-                Pick up where you left off. Select a project to continue
-                refining your visualization.
+                Your latest work and shared community projects, all in one
+                place.
               </p>
             </div>
           </div>
@@ -247,7 +245,12 @@ const Landing: React.FC<LandingProps> = ({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {hasHistory ? (
-                history.map((item, index) => (
+                history.map((item, index) => {
+                  const ownerLabel = item.isPublic
+                    ? item.sharedBy || "Unknown"
+                    : userName || "You";
+                  const name = item.name || `Residence ${item.id}`;
+                  return (
                   <div
                     key={item.id || `${item.timestamp}-${index}`}
                     onClick={() => onSelectHistory(item.id)}
@@ -259,24 +262,27 @@ const Landing: React.FC<LandingProps> = ({
                         alt={`Project ${history.length - index}`}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                       />
-                      <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-2 py-1 rounded-md border border-zinc-200 shadow-sm">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-800">
-                          {index === 0
-                            ? "Latest Edit"
-                            : `Version ${history.length - index}`}
-                        </span>
-                      </div>
+                      {item.isPublic && (
+                        <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-2 py-1 rounded-md border border-zinc-200 shadow-sm">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-800">
+                            Community
+                          </span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="p-5 flex justify-between items-center bg-white border-t border-zinc-100 flex-grow">
                       <div>
                         <h3 className="text-lg font-serif font-bold text-zinc-900 group-hover:text-primary transition-colors">
-                          Residence {history.length - index}
+                          {name}
                         </h3>
                         <div className="flex items-center text-zinc-400 text-xs mt-1 space-x-2">
                           <Clock size={12} />
                           <span className="font-mono uppercase">
                             {new Date(item.timestamp).toLocaleDateString()}
+                          </span>
+                          <span className="text-zinc-400 text-[10px] uppercase tracking-wide">
+                            By {ownerLabel}
                           </span>
                         </div>
                       </div>
@@ -285,78 +291,11 @@ const Landing: React.FC<LandingProps> = ({
                       </div>
                     </div>
                   </div>
-                ))
+                );
+                })
               ) : (
                 <div className="col-span-full rounded-xl border border-dashed border-zinc-200 bg-zinc-50 p-10 text-center text-sm text-zinc-500">
                   No projects yet. Upload a floor plan to create your first one.
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="py-24 bg-white relative border-b border-zinc-100">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
-            <div className="max-w-2xl">
-              <h2 className="text-4xl font-serif text-black mb-4">
-                Community Projects
-              </h2>
-              <p className="text-zinc-500 text-lg">
-                Explore shared projects from the Roomify community.
-              </p>
-            </div>
-          </div>
-
-          {isLoadingPublic ? (
-            <div className="flex items-center justify-center text-sm text-zinc-500">
-              Loading community projects…
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {publicProjects.length > 0 ? (
-                publicProjects.map((item, index) => (
-                  <div
-                    key={`public-${item.id || `${item.timestamp}-${index}`}`}
-                    onClick={() => onSelectPublic(item)}
-                    className="group relative bg-white rounded-xl overflow-hidden border border-zinc-200 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col h-full"
-                  >
-                    <div className="aspect-[4/3] overflow-hidden bg-zinc-100 relative">
-                      <img
-                        src={item.renderedImage || item.sourceImage}
-                        alt={`Community Project ${publicProjects.length - index}`}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                      />
-                      <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-2 py-1 rounded-md border border-zinc-200 shadow-sm">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-800">
-                          Shared
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="p-5 flex justify-between items-center bg-white border-t border-zinc-100 flex-grow">
-                      <div>
-                        <h3 className="text-lg font-serif font-bold text-zinc-900 group-hover:text-primary transition-colors">
-                          Community Render {publicProjects.length - index}
-                        </h3>
-                        <div className="flex items-center text-zinc-400 text-xs mt-1 space-x-2">
-                          <Clock size={12} />
-                          <span className="font-mono uppercase">
-                            {new Date(item.timestamp).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="w-10 h-10 rounded-full bg-zinc-50 border border-zinc-200 flex items-center justify-center text-zinc-400 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all duration-300">
-                        <ArrowUpRight size={18} />
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="col-span-full rounded-xl border border-dashed border-zinc-200 bg-zinc-50 p-10 text-center text-sm text-zinc-500">
-                  No shared projects yet. Click Share in the editor to publish
-                  yours.
                 </div>
               )}
             </div>
@@ -416,25 +355,6 @@ const LogoPlaceholder = ({
       {text}
     </span>
   </div>
-);
-
-const RefreshCwIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-    <path d="M21 3v5h-5" />
-    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-    <path d="M8 16H3v5" />
-  </svg>
 );
 
 const FooterLink = ({ href, label }: { href: string; label: string }) => (

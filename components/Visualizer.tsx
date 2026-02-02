@@ -10,11 +10,13 @@ const Visualizer: React.FC<VisualizerProps> = ({
   initialImage,
   onRenderComplete,
   onShare,
+  onUnshare,
   projectName,
   projectId,
   initialRender,
   isPublic = false,
   sharedBy = null,
+  canUnshare = false,
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [authRequired, setAuthRequired] = useState(false);
@@ -24,6 +26,9 @@ const Visualizer: React.FC<VisualizerProps> = ({
   const [shareStatus, setShareStatus] = useState<"idle" | "saving" | "done">(
     "idle",
   );
+  const [unshareStatus, setUnshareStatus] = useState<
+    "idle" | "saving" | "done"
+  >("idle");
 
   const hasInitialGenerated = useRef(false);
 
@@ -63,6 +68,18 @@ const Visualizer: React.FC<VisualizerProps> = ({
     }
   };
 
+  const handleUnshare = async () => {
+    if (!currentImage || !onUnshare || !isPublic) return;
+    setUnshareStatus("saving");
+    try {
+      await onUnshare(currentImage);
+      setUnshareStatus("done");
+      window.setTimeout(() => setUnshareStatus("idle"), 1500);
+    } catch (error) {
+      console.error("Unshare failed:", error);
+      setUnshareStatus("idle");
+    }
+  };
   const generate3DView = async (isInitial: boolean = false) => {
     if (!initialImage) return;
 
@@ -216,11 +233,11 @@ const Visualizer: React.FC<VisualizerProps> = ({
               <h2 className="text-2xl font-serif font-bold text-black">
                 {projectName || "Untitled Project"}
               </h2>
-              {isPublic && (
-                <p className="text-xs text-zinc-500 mt-1">
-                  Shared by {sharedBy || "Community"}
-                </p>
-              )}
+              <p className="text-xs text-zinc-500 mt-1">
+                {isPublic
+                  ? `Shared by ${sharedBy || "Unknown"}`
+                  : "Created by You"}
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <Button
@@ -231,27 +248,48 @@ const Visualizer: React.FC<VisualizerProps> = ({
               >
                 <Download className="w-4 h-4 mr-2" /> Export
               </Button>
-              <Button
-                size="sm"
-                onClick={handleShare}
-                className="bg-black text-white h-9 shadow-sm hover:bg-zinc-800"
-                disabled={
-                  isPublic ||
-                  !currentImage ||
-                  isProcessing ||
-                  shareStatus === "saving" ||
-                  !onShare
-                }
-              >
-                <Share2 className="w-4 h-4 mr-2" />
-                {isPublic
-                  ? "Already Shared"
-                  : shareStatus === "saving"
-                  ? "Sharing…"
-                  : shareStatus === "done"
+              {isPublic ? (
+                <Button
+                  size="sm"
+                  onClick={handleUnshare}
+                  className="bg-black text-white h-9 shadow-sm hover:bg-zinc-800"
+                  disabled={
+                    !currentImage ||
+                    isProcessing ||
+                    unshareStatus === "saving" ||
+                    !onUnshare ||
+                    !canUnshare
+                  }
+                >
+                  <Share2 className="w-4 h-4 mr-2" />
+                  {!canUnshare
                     ? "Shared"
-                    : "Share"}
-              </Button>
+                    : unshareStatus === "saving"
+                      ? "Unsharing…"
+                      : unshareStatus === "done"
+                        ? "Unshared"
+                        : "Unshare"}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={handleShare}
+                  className="bg-black text-white h-9 shadow-sm hover:bg-zinc-800"
+                  disabled={
+                    !currentImage ||
+                    isProcessing ||
+                    shareStatus === "saving" ||
+                    !onShare
+                  }
+                >
+                  <Share2 className="w-4 h-4 mr-2" />
+                  {shareStatus === "saving"
+                    ? "Sharing…"
+                    : shareStatus === "done"
+                      ? "Shared"
+                      : "Share"}
+                </Button>
+              )}
             </div>
           </div>
 

@@ -1,54 +1,56 @@
 const PROJECT_PREFIX = "roomify_project_";
 const PUBLIC_PREFIX = "roomify_public_";
+const USER_PREFIX = "roomify_user_";
+const READ_URL_TTL_SECONDS = 60 * 60 * 24 * 30;
 
-const getUserPuter = (userParam) => {
-  if (userParam && userParam.puter) return userParam.puter;
-  return null;
+const getUserPuter = (userParam) => userParam?.puter || null;
+const getMePuter = (meParam) =>
+  meParam?.puter || (typeof me !== "undefined" ? me?.puter : null);
+
+const jsonError = (status, message, extra = {}) =>
+  new Response(JSON.stringify({ error: message, ...extra }), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+
+const getUserId = async (userParam) => {
+  const userPuter = getUserPuter(userParam);
+  if (!userPuter) return null;
+
+  try {
+    const user = await userPuter.auth.getUser();
+    return user?.uuid || null;
+  } catch {
+    return null;
+  }
 };
 
-const getMePuter = (meParam) => {
-  if (meParam && meParam.puter) return meParam.puter;
-  if (typeof me !== "undefined" && me && me.puter) return me.puter;
-  return null;
-};
+const getPublicKey = (userId, projectId) =>
+  `${PUBLIC_PREFIX}${userId}_${projectId}`;
 
-const listKeysWithPrefix = async (kv, prefix) => {
-  const keys = [];
+const listKvValues = async (kv, pattern) => {
+  const entries = [];
   let cursor = undefined;
-  const limit = 100;
 
   while (true) {
-    const page = await kv.list({ limit, cursor });
+    const page = await kv.list({ pattern, returnValues: true, cursor });
+    const items = Array.isArray(page)
+      ? page
+      : Array.isArray(page?.items)
+        ? page.items
+        : [];
 
-    if (Array.isArray(page)) {
-      keys.push(
-        ...page.filter(
-          (key) => typeof key === "string" && key.startsWith(prefix),
-        ),
-      );
-      break;
-    }
-
-    const items = Array.isArray(page?.items) ? page.items : [];
-
-    keys.push(
-      ...items.filter(
-        (key) => typeof key === "string" && key.startsWith(prefix),
-      ),
-    );
+    items.forEach((entry) => {
+      if (entry && typeof entry === "object" && "key" in entry) {
+        entries.push(entry);
+      }
+    });
 
     if (!page?.cursor) break;
     cursor = page.cursor;
   }
 
-  return keys;
-};
-
-const attachIdFromKey = (project, key, prefix) => {
-  if (!project || project.id) return project;
-  if (typeof key !== "string" || !key.startsWith(prefix)) return project;
-  const derivedId = key.slice(prefix.length);
-  return derivedId ? { ...project, id: derivedId } : project;
+  return entries;
 };
 
 const hydrateProject = async (puterContext, project) => {
@@ -60,7 +62,7 @@ const hydrateProject = async (puterContext, project) => {
   if (project?.renderedPath) {
     tasks.push(
       puterContext.fs
-        .getReadURL(project.renderedPath, 60 * 60 * 24 * 30)
+        .getReadURL(project.renderedPath, READ_URL_TTL_SECONDS)
         .then((url) => {
           updates.renderedImage = url;
         })
@@ -71,7 +73,7 @@ const hydrateProject = async (puterContext, project) => {
   if (project?.sourcePath) {
     tasks.push(
       puterContext.fs
-        .getReadURL(project.sourcePath, 60 * 60 * 24 * 30)
+        .getReadURL(project.sourcePath, READ_URL_TTL_SECONDS)
         .then((url) => {
           updates.sourceImage = url;
         })
@@ -85,85 +87,94 @@ const hydrateProject = async (puterContext, project) => {
   return { ...project, ...updates };
 };
 
-const listProjects = async (userParam) => {
-  const userPuter = getUserPuter(userParam);
+const hydratePublicProject = async (mePuter, project) =>
+  hydrateProject(mePuter, { ...project, renderedPath: project.publicPath });
 
-  if (!userPuter) throw new Error("Missing user Puter context.");
+const kvGetProject = async (kv, key) => kv.get(key);
 
-  const keys = await listKeysWithPrefix(userPuter.kv, PROJECT_PREFIX);
-  if (!keys || keys.length === 0) return [];
-
-  const items = await Promise.all(
-    keys.map(async (key) => {
-      const project = await userPuter.kv.get(key);
-      return attachIdFromKey(project, key, PROJECT_PREFIX);
-    }),
-  );
-
-  const projects = items.filter(Boolean);
-  const hydrated = await Promise.all(
-    projects.map((project) => hydrateProject(userPuter, project)),
-  );
-
-  hydrated.sort((a, b) => (b?.timestamp || 0) - (a?.timestamp || 0));
-
-  return hydrated;
+const findPublicKeyByProjectId = async (mePuter, projectId) => {
+  const entries = await listKvValues(mePuter.kv, `${PUBLIC_PREFIX}*`);
+  const match = entries.find((entry) => entry?.value?.id === projectId);
+  return match?.key || null;
 };
 
-const listPublicProjects = async (meParam) => {
-  const mePuter = getMePuter(meParam);
-  if (!mePuter) throw new Error("Missing deployer Puter context.");
-
-  const keys = await listKeysWithPrefix(mePuter.kv, PUBLIC_PREFIX);
-  if (!keys || keys.length === 0) return [];
-
-  const items = await Promise.all(
-    keys.map(async (key) => {
-      const project = await mePuter.kv.get(key);
-      return attachIdFromKey(project, key, PUBLIC_PREFIX);
-    }),
-  );
-
-  const projects = items.filter(Boolean);
-  const hydrated = await Promise.all(
-    projects.map((project) =>
-      hydrateProject(mePuter, {
-        ...project,
-        renderedPath: project.publicPath,
-      }),
-    ),
-  );
-  hydrated.sort((a, b) => (b?.timestamp || 0) - (a?.timestamp || 0));
-  return hydrated;
-};
-
-router.get("/api/projects/list", async ({ user }) => {
+router.get("/api/projects/list", async ({ user, me }) => {
   try {
-    const projects = await listProjects(user);
-    return { projects };
-  } catch (error) {
-    return new Response(
-      JSON.stringify({
-        error: "Failed to list projects",
-        message: error?.message || "Unknown error",
-      }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
-    );
-  }
-});
+    const userPuter = getUserPuter(user);
+    if (!userPuter) throw new Error("Missing user Puter context.");
 
-router.get("/api/projects/public", async ({ me }) => {
-  try {
-    const projects = await listPublicProjects(me);
-    return { projects };
-  } catch (error) {
-    return new Response(
-      JSON.stringify({
-        error: "Failed to list public projects",
-        message: error?.message || "Unknown error",
-      }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+    const mePuter = getMePuter(me);
+    const userItems = (await listKvValues(userPuter.kv, `${PROJECT_PREFIX}*`))
+      .map(({ value }) => value)
+      .filter((project) => project && project.id);
+
+    let publicItems = [];
+
+    if (mePuter) {
+      const entries = await listKvValues(mePuter.kv, `${PUBLIC_PREFIX}*`);
+      publicItems = entries
+        .map(({ value }) => value)
+        .filter((project) => project && project.id)
+        .map((project) => ({
+          ...project,
+          ownerId: project.ownerId || null,
+        }));
+    }
+
+    const merged = new Map();
+    userItems.filter(Boolean).forEach((project) => {
+      merged.set(`user:${project.id}`, project);
+    });
+
+    publicItems.filter(Boolean).forEach((project) => {
+      const key = `public:${project.ownerId || "unknown"}:${project.id}`;
+      merged.set(key, { ...project, isPublic: true });
+    });
+
+    const hydrated = await Promise.all(
+      Array.from(merged.values()).map((project) =>
+        project?.isPublic
+          ? hydratePublicProject(mePuter, project)
+          : hydrateProject(userPuter, project),
+      ),
     );
+
+    if (mePuter) {
+      const ownerIds = Array.from(
+        new Set(
+          hydrated
+            .filter((item) => item?.isPublic && item?.ownerId)
+            .map((item) => item.ownerId),
+        ),
+      );
+
+      if (ownerIds.length > 0) {
+        const ownerEntries = await Promise.all(
+          ownerIds.map(async (ownerId) => {
+            const record = await mePuter.kv.get(`${USER_PREFIX}${ownerId}`);
+            return { ownerId, username: record?.username || null };
+          }),
+        );
+
+        const ownerMap = new Map(
+          ownerEntries.map((entry) => [entry.ownerId, entry.username]),
+        );
+
+        hydrated.forEach((item) => {
+          if (item?.isPublic && item?.ownerId) {
+            item.sharedBy = ownerMap.get(item.ownerId) || item.sharedBy || null;
+          }
+        });
+      }
+    }
+
+    hydrated.sort((a, b) => (b?.timestamp || 0) - (a?.timestamp || 0));
+
+    return { projects: hydrated };
+  } catch (error) {
+    return jsonError(500, "Failed to list projects", {
+      message: error?.message || "Unknown error",
+    });
   }
 });
 
@@ -171,168 +182,158 @@ router.get("/api/projects/get", async ({ request, user, me }) => {
   const url = new URL(request.url);
   const id = url.searchParams.get("id");
   const scope = url.searchParams.get("scope") || "user";
+  const ownerId = url.searchParams.get("ownerId");
 
-  if (!id) {
-    return new Response(JSON.stringify({ error: "Project id required" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  if (!id) return jsonError(400, "Project id required");
 
   if (scope === "public") {
     const mePuter = getMePuter(me);
-    if (!mePuter) {
-      return new Response(
-        JSON.stringify({ error: "Missing deployer Puter context." }),
-        { status: 500, headers: { "Content-Type": "application/json" } },
-      );
-    }
-    const publicKey = `${PUBLIC_PREFIX}${id}`;
-    const project = attachIdFromKey(
-      await mePuter.kv.get(publicKey),
-      publicKey,
-      PUBLIC_PREFIX,
-    );
-    if (!project) {
-      return new Response(JSON.stringify({ error: "Project not found" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    const hydrated = await hydrateProject(mePuter, {
-      ...project,
-      renderedPath: project.publicPath,
-    });
-    return { project: hydrated };
+    if (!mePuter) return jsonError(500, "Missing deployer Puter context.");
+
+    const publicKey = ownerId
+      ? getPublicKey(ownerId, id)
+      : await findPublicKeyByProjectId(mePuter, id);
+
+    if (!publicKey) return jsonError(404, "Project not found");
+
+    const project = await kvGetProject(mePuter.kv, publicKey);
+    if (!project) return jsonError(404, "Project not found");
+
+    return { project: await hydratePublicProject(mePuter, project) };
   }
 
   const userPuter = getUserPuter(user);
-  if (!userPuter) {
-    return new Response(JSON.stringify({ error: "Authentication required" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  if (!userPuter) return jsonError(401, "Authentication required");
 
   const key = `${PROJECT_PREFIX}${id}`;
-  const project = attachIdFromKey(
-    await userPuter.kv.get(key),
-    key,
-    PROJECT_PREFIX,
-  );
-  if (!project) {
-    return new Response(JSON.stringify({ error: "Project not found" }), {
-      status: 404,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-  const hydrated = await hydrateProject(userPuter, project);
-  return { project: hydrated };
+  const project = await kvGetProject(userPuter.kv, key);
+
+  const mePuter = getMePuter(me);
+  if (project) return { project: await hydrateProject(userPuter, project) };
+
+  const userId = await getUserId(user);
+  if (!mePuter || !userId) return jsonError(404, "Project not found");
+
+  const publicKey = getPublicKey(userId, id);
+  const publicProject = await kvGetProject(mePuter.kv, publicKey);
+
+  if (publicProject)
+    return { project: await hydratePublicProject(mePuter, publicProject) };
+
+  return jsonError(404, "Project not found");
 });
 
 router.post("/api/projects/save", async ({ request, user, me }) => {
   const userPuter = getUserPuter(user);
-  if (!userPuter) {
-    return new Response(JSON.stringify({ error: "Authentication required" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  if (!userPuter) return jsonError(401, "Authentication required");
 
   const body = await request.json();
   const project = body?.project;
 
-  const share = body?.share === true;
+  const visibility = body?.visibility === "public" ? "public" : "private";
   const shareImageUrl = body?.shareImageUrl;
 
-  if (!project?.id || !project?.sourceImage) {
-    return new Response(
-      JSON.stringify({ error: "Project id and image required" }),
-      {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
-  }
+  if (!project?.id || !project?.sourceImage)
+    return jsonError(400, "Project id and image required");
 
   const payload = {
     ...project,
     updatedAt: new Date().toISOString(),
   };
 
-  const key = `${PROJECT_PREFIX}${project.id}`;
-  try {
-    await userPuter.kv.update(key, {
-      id: payload.id,
-      sourceImage: payload.sourceImage,
-      sourcePath: payload.sourcePath,
-      renderedImage: payload.renderedImage,
-      renderedPath: payload.renderedPath,
-      timestamp: payload.timestamp,
-      updatedAt: payload.updatedAt,
-    });
-  } catch {
-    await userPuter.kv.set(key, payload);
-  }
+  if (visibility === "private") {
+    const key = `${PROJECT_PREFIX}${project.id}`;
 
-  if (share) {
+    try {
+      await userPuter.kv.update(key, {
+        id: payload.id,
+        sourceImage: payload.sourceImage,
+        sourcePath: payload.sourcePath,
+        renderedImage: payload.renderedImage,
+        renderedPath: payload.renderedPath,
+        timestamp: payload.timestamp,
+        updatedAt: payload.updatedAt,
+      });
+    } catch {
+      await userPuter.kv.set(key, payload);
+    }
+
+    const userId = await getUserId(user);
     const mePuter = getMePuter(me);
-    if (!mePuter) {
-      return new Response(
-        JSON.stringify({ error: "Missing deployer Puter context." }),
-        { status: 500, headers: { "Content-Type": "application/json" } },
-      );
+
+    if (userId && mePuter) {
+      const publicKey = getPublicKey(userId, project.id);
+      const existing = await mePuter.kv.get(publicKey);
+
+      if (existing?.ownerId && existing.ownerId !== userId)
+        return jsonError(403, "Not allowed");
+
+      await mePuter.kv.del(publicKey);
     }
 
-    const sharedBy =
-      user?.puter?.user?.username ||
-      user?.puter?.user?.name ||
-      user?.puter?.user?.email ||
-      null;
-    const publicKey = `${PUBLIC_PREFIX}${project.id}`;
-
-    let publicPath = null;
-    let publicUrl = null;
-
-    if (shareImageUrl) {
-      try {
-        const response = await fetch(shareImageUrl);
-        const blob = await response.blob();
-        publicPath = `roomify/public/${project.id}.png`;
-        await mePuter.fs.write(publicPath, blob);
-        publicUrl = await mePuter.fs.getReadURL(publicPath, 60 * 60 * 24 * 30);
-      } catch (error) {
-        publicUrl = shareImageUrl;
-      }
-    }
-
-    await mePuter.kv.set(publicKey, {
-      ...payload,
-      publicPath,
-      renderedImage: publicUrl || payload.renderedImage,
-      sharedBy,
-      sharedAt: new Date().toISOString(),
-    });
+    return { saved: true, id: project.id };
   }
+
+  const userId = await getUserId(user);
+  if (!userId) return jsonError(401, "User id required");
+
+  const mePuter = getMePuter(me);
+  if (!mePuter) return jsonError(500, "Missing deployer Puter context.");
+
+  const publicKey = getPublicKey(userId, project.id);
+
+  try {
+    const userInfo = await userPuter.auth.getUser();
+    const username = userInfo?.username || userInfo?.name || null;
+
+    if (username) await mePuter.kv.set(`${USER_PREFIX}${userId}`, { username });
+  } catch {
+    // Best-effort user map write
+  }
+
+  const existing = await mePuter.kv.get(publicKey);
+  if (existing?.ownerId && existing.ownerId !== userId)
+    return jsonError(403, "Not allowed");
+
+  let publicPath = null;
+  let publicUrl = null;
+
+  if (shareImageUrl) {
+    try {
+      const response = await fetch(shareImageUrl);
+      const blob = await response.blob();
+
+      publicPath = `roomify/public/${project.id}.png`;
+      await mePuter.fs.write(publicPath, blob);
+
+      publicUrl = await mePuter.fs.getReadURL(publicPath, READ_URL_TTL_SECONDS);
+    } catch (error) {
+      publicUrl = shareImageUrl;
+    }
+  }
+
+  await mePuter.kv.set(publicKey, {
+    ...payload,
+    publicPath,
+    renderedImage: publicUrl || payload.renderedImage,
+    ownerId: userId,
+    sharedAt: new Date().toISOString(),
+  });
+
+  const userKey = `${PROJECT_PREFIX}${project.id}`;
+  await userPuter.kv.del(userKey);
 
   return { saved: true, id: project.id };
 });
 
 router.get("/*path", async ({ params }) => {
-  return new Response(
-    JSON.stringify({
-      error: "Not found",
-      path: params.path,
-      availableEndpoints: [
-        "/api/projects/list",
-        "/api/projects/public",
-        "/api/projects/get",
-        "/api/projects/save",
-      ],
-    }),
-    {
-      status: 404,
-      headers: { "Content-Type": "application/json" },
-    },
-  );
+  return jsonError(404, "Not found", {
+    path: params.path,
+    availableEndpoints: [
+      "/api/projects/list",
+      "/api/projects/get",
+      "/api/projects/save",
+      "/api/projects/clear",
+    ],
+  });
 });

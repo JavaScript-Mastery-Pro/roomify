@@ -11,13 +11,17 @@ declare global {
 
   interface DesignHistoryItem {
     id: string;
+    name?: string | null;
     sourceImage: string;
     sourcePath?: string | null;
     renderedImage?: string | null;
     renderedPath?: string | null;
+    publicPath?: string | null;
     timestamp: number;
+    ownerId?: string | null;
     sharedBy?: string | null;
     sharedAt?: string | null;
+    isPublic?: boolean;
   }
 
   interface DesignConfig {
@@ -40,32 +44,38 @@ declare global {
 
   type AppContext = {
     designHistory: DesignHistoryItem[];
-    publicProjects: DesignHistoryItem[];
     isLoadingHistory: boolean;
-    isLoadingPublic: boolean;
     uploadedImage: string | null;
     currentSessionId: string | null;
     selectedInitialRender: string | null;
+    currentUserId: string | null;
     setDesignHistory: React.Dispatch<React.SetStateAction<DesignHistoryItem[]>>;
-    setPublicProjects: React.Dispatch<React.SetStateAction<DesignHistoryItem[]>>;
     setUploadedImage: React.Dispatch<React.SetStateAction<string | null>>;
     setCurrentSessionId: React.Dispatch<React.SetStateAction<string | null>>;
     setSelectedInitialRender: React.Dispatch<React.SetStateAction<string | null>>;
     fetchProjectById: (
       id: string,
       scope: "user" | "public",
+      ownerId?: string | null,
     ) => Promise<DesignHistoryItem | null>;
-    saveProject: (item: DesignHistoryItem, share?: boolean) => Promise<void>;
+    saveProject: (
+      item: DesignHistoryItem,
+      visibility?: "private" | "public",
+    ) => Promise<void>;
     handleRenderComplete: (payload: RenderCompletePayload) => void;
-    handleShareCurrent: (image: string) => Promise<void>;
+    handleShareCurrent: (
+      image: string,
+      opts?: { visibility?: "private" | "public" },
+    ) => Promise<void>;
     handleSignIn: () => Promise<void>;
     fetchHistory: () => Promise<void>;
-    fetchPublicProjects: () => Promise<void>;
   };
 
   type VisualizerLocationState = {
     initialImage?: string;
     initialRender?: string | null;
+    ownerId?: string | null;
+    name?: string | null;
   };
 
   interface VisualizerProps {
@@ -73,22 +83,21 @@ declare global {
     initialImage: string | null;
     onRenderComplete?: (payload: RenderCompletePayload) => void;
     onShare?: (image: string) => Promise<void> | void;
+    onUnshare?: (image: string) => Promise<void> | void;
     projectName?: string;
     projectId?: string;
     initialRender?: string | null;
     isPublic?: boolean;
     sharedBy?: string | null;
+    canUnshare?: boolean;
   }
 
   interface LandingProps {
     onStart: (file: string) => void;
     history: DesignHistoryItem[];
     onSelectHistory: (id: string) => void;
-    onSelectPublic: (item: DesignHistoryItem) => void;
     onSignIn: () => Promise<void>;
     isLoadingHistory: boolean;
-    publicProjects: DesignHistoryItem[];
-    isLoadingPublic: boolean;
   }
 
   interface UploadProps {
