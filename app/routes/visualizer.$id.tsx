@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Navigate,
   useLocation,
@@ -15,6 +15,22 @@ import {
 } from "@/lib/puter.action";
 
 import Visualizer from "@/components/Visualizer";
+
+const createDesignHistoryItem = (
+  id: string,
+  base: Partial<DesignHistoryItem>,
+  overrides: Partial<DesignHistoryItem> = {}
+): DesignHistoryItem => ({
+  id,
+  name: base.name || `Residence ${id}`,
+  sourceImage: base.sourceImage || "",
+  renderedImage: base.renderedImage,
+  renderedPath: base.renderedPath,
+  timestamp: Date.now(),
+  ownerId: base.ownerId || null,
+  isPublic: base.isPublic || false,
+  ...overrides,
+});
 
 export default function VisualizerRoute() {
   const { id } = useParams();
@@ -57,16 +73,15 @@ export default function VisualizerRoute() {
     renderedPath?: string;
   }) => {
     if (!id) return;
-    const updatedItem = {
-      id,
-      name: resolvedItem?.name || `Residence ${id}`,
+    const updatedItem = createDesignHistoryItem(id, {
+      name: resolvedItem?.name,
       sourceImage: uploadedImage || "",
+      ownerId: resolvedItem?.ownerId,
+      isPublic: resolvedItem?.isPublic,
+    }, {
       renderedImage: payload.renderedImage,
       renderedPath: payload.renderedPath,
-      timestamp: Date.now(),
-      ownerId: resolvedItem?.ownerId || null,
-      isPublic: resolvedItem?.isPublic || false,
-    };
+    });
     setResolvedItem(updatedItem);
     await saveProject(updatedItem, updatedItem.isPublic ? "public" : "private");
   };
@@ -77,19 +92,19 @@ export default function VisualizerRoute() {
   ) => {
     if (!id) return;
     const visibility = opts?.visibility || "public";
-    const updatedItem = {
-      id,
-      name: resolvedItem?.name || `Residence ${id}`,
+    const ownerId = visibility === "public"
+      ? resolvedItem?.ownerId || currentUserId || null
+      : resolvedItem?.ownerId || null;
+
+    const updatedItem = createDesignHistoryItem(id, {
+      name: resolvedItem?.name,
       sourceImage: uploadedImage || "",
-      renderedImage: image,
       renderedPath: resolvedItem?.renderedPath,
-      timestamp: Date.now(),
-      ownerId:
-        visibility === "public"
-          ? resolvedItem?.ownerId || currentUserId || null
-          : resolvedItem?.ownerId || null,
+    }, {
+      renderedImage: image,
+      ownerId,
       isPublic: visibility === "public",
-    };
+    });
     setResolvedItem(updatedItem);
     if (visibility === "public") {
       await shareProject(updatedItem);
@@ -104,15 +119,14 @@ export default function VisualizerRoute() {
     const state = (location.state || {}) as VisualizerLocationState;
 
     if (state.initialImage) {
-      const item: DesignHistoryItem = {
-        id,
-        name: state.name || null,
+      const item = createDesignHistoryItem(id, {
         sourceImage: state.initialImage,
+      }, {
+        name: state.name || null,
         renderedImage: state.initialRender || undefined,
-        timestamp: Date.now(),
         ownerId: state.ownerId || queryOwnerId || null,
         isPublic: isPublicProject,
-      };
+      });
       setResolvedItem(item);
       setUploadedImage(state.initialImage);
       setSelectedInitialRender(state.initialRender || null);

@@ -1,5 +1,5 @@
 import { puter } from "@heyputer/puter.js";
-import { PUTER_WORKER_URL } from "./constants";
+import { PUTER_WORKER_URL, STORAGE_PATHS } from "./constants";
 
 export const signIn = async () => await puter.auth.signIn();
 
@@ -88,10 +88,10 @@ export const saveProject = async (
 
   if (sourceImage?.startsWith("data:") && item.id) {
     try {
-      await puter.fs.mkdir("roomify/sources", { recursive: true });
+      await puter.fs.mkdir(STORAGE_PATHS.SOURCES, { recursive: true });
 
       const sourceBlob = await (await fetch(sourceImage)).blob();
-      sourcePath = sourcePath || `roomify/sources/${item.id}.png`;
+      sourcePath = sourcePath || `${STORAGE_PATHS.SOURCES}/${item.id}.png`;
 
       await puter.fs.write(sourcePath, sourceBlob);
       sourceImage = await puter.fs.getReadURL(sourcePath);

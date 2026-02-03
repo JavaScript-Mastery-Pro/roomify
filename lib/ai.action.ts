@@ -1,5 +1,5 @@
 import { puter } from "@heyputer/puter.js";
-import { ROOMIFY_RENDER_PROMPT } from "@/lib/constants";
+import { ROOMIFY_RENDER_PROMPT, STORAGE_PATHS } from "@/lib/constants";
 
 export const generate3DView = async ({
   sourceImage,
@@ -31,14 +31,14 @@ export const generate3DView = async ({
   try {
     const blob = await (await fetch(rawImageUrl)).blob();
     try {
-      await puter.fs.mkdir("roomify/renders", { recursive: true });
+      await puter.fs.mkdir(STORAGE_PATHS.RENDERS, { recursive: true });
     } catch (error) {
       console.warn("Failed to ensure render directory:", error);
     }
 
     const fileName = projectId
-      ? `roomify/renders/${projectId}.png`
-      : `roomify/renders/${Date.now()}.png`;
+      ? `${STORAGE_PATHS.RENDERS}/${projectId}.png`
+      : `${STORAGE_PATHS.RENDERS}/${Date.now()}.png`;
     await puter.fs.write(fileName, blob);
 
     const storedUrl = await puter.fs.getReadURL(fileName);

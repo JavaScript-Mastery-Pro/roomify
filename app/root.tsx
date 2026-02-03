@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Links, Meta, Outlet, Scripts, ScrollRestoration } from "react-router";
 import "../index.css";
 import {
@@ -7,22 +7,32 @@ import {
   signOut as puterSignOut,
 } from "../lib/puter.action";
 
+interface AuthState {
+  isSignedIn: boolean;
+  userName: string | null;
+  userId: string | null;
+}
+
+const DEFAULT_AUTH_STATE: AuthState = {
+  isSignedIn: false,
+  userName: null,
+  userId: null,
+};
+
 export default function Root() {
-  const [isSignedIn, setIsSignedIn] = useState(false);
-  const [userName, setUserName] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [authState, setAuthState] = useState<AuthState>(DEFAULT_AUTH_STATE);
 
   const refreshAuth = async () => {
     try {
       const user = await getCurrentUser();
-      setIsSignedIn(!!user);
-      setUserName(user?.username || null);
-      setUserId(user?.uuid || null);
+      setAuthState({
+        isSignedIn: !!user,
+        userName: user?.username || null,
+        userId: user?.uuid || null,
+      });
       return !!user;
     } catch {
-      setIsSignedIn(false);
-      setUserName(null);
-      setUserId(null);
+      setAuthState(DEFAULT_AUTH_STATE);
       return false;
     }
   };
@@ -65,9 +75,7 @@ export default function Root() {
           <div className="relative z-10">
             <Outlet
               context={{
-                isSignedIn,
-                userName,
-                userId,
+                ...authState,
                 refreshAuth,
                 signIn,
                 signOut,

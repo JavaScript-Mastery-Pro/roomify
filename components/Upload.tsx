@@ -5,6 +5,11 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { useOutletContext } from "react-router";
+import {
+  PROGRESS_INCREMENT,
+  REDIRECT_DELAY_MS,
+  PROGRESS_INTERVAL_MS,
+} from "@/lib/constants";
 
 const Upload = ({ onComplete, className = "" }: UploadProps) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -52,19 +57,19 @@ const Upload = ({ onComplete, className = "" }: UploadProps) => {
       let completed = false;
       const interval = setInterval(() => {
         setProgress((prev) => {
-          const next = Math.min(prev + 15, 100);
+          const next = Math.min(prev + PROGRESS_INCREMENT, 100);
 
           if (next === 100 && !completed) {
             completed = true;
             clearInterval(interval);
             setTimeout(() => {
               onComplete(result);
-            }, 600);
+            }, REDIRECT_DELAY_MS);
           }
 
           return next;
         });
-      }, 100);
+      }, PROGRESS_INTERVAL_MS);
     };
 
     reader.readAsDataURL(selectedFile);

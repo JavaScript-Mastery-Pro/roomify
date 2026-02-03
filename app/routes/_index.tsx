@@ -7,6 +7,7 @@ import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/Button";
 
 import { getProjects, saveProject } from "@/lib/puter.action";
+import { GRID_OVERLAY_SIZE, GRID_COLOR } from "@/lib/constants";
 
 export default function IndexRoute() {
   const navigate = useNavigate();
@@ -90,9 +91,8 @@ export default function IndexRoute() {
           <div
             className="grid-overlay"
             style={{
-              backgroundImage:
-                "linear-gradient(#3B82F6 1px, transparent 1px), linear-gradient(90deg, #3B82F6 1px, transparent 1px)",
-              backgroundSize: "60px 60px",
+              backgroundImage: `linear-gradient(${GRID_COLOR} 1px, transparent 1px), linear-gradient(90deg, ${GRID_COLOR} 1px, transparent 1px)`,
+              backgroundSize: GRID_OVERLAY_SIZE,
             }}
           ></div>
 

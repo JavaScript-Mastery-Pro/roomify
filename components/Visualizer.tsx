@@ -10,6 +10,10 @@ import { Button } from "./ui/Button";
 import AuthRequiredModal from "./AuthRequiredModal";
 
 import { generate3DView } from "@/lib/ai.action";
+import {
+  SHARE_STATUS_RESET_DELAY_MS,
+  UNAUTHORIZED_STATUSES,
+} from "@/lib/constants";
 
 const Visualizer = ({
   onBack,
@@ -70,10 +74,10 @@ const Visualizer = ({
       }
 
       setShareStatus("done");
-      window.setTimeout(() => {
+      setTimeout(() => {
         setShareStatus("idle");
         setShareAction(null);
-      }, 1500);
+      }, SHARE_STATUS_RESET_DELAY_MS);
     } catch (error) {
       console.error(`${nextAction} failed:`, error);
       setShareStatus("idle");
@@ -110,7 +114,7 @@ const Visualizer = ({
       }
     } catch (error: any) {
       console.error("Generation failed:", error);
-      if (error?.status === 401 || error?.status === 403) {
+      if (UNAUTHORIZED_STATUSES.includes(error?.status)) {
         setAuthRequired(true);
       }
     } finally {

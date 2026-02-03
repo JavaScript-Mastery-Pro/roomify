@@ -1,11 +1,3 @@
-interface Material {
-  id: string;
-  name: string;
-  thumbnail: string;
-  type: "color" | "texture";
-  category: "floor" | "wall" | "furniture";
-}
-
 interface DesignHistoryItem {
   id: string;
   name?: string | null;
@@ -19,19 +11,6 @@ interface DesignHistoryItem {
   sharedBy?: string | null;
   sharedAt?: string | null;
   isPublic?: boolean;
-}
-
-interface DesignConfig {
-  floor: string;
-  walls: string;
-  style: string;
-}
-
-enum AppStatus {
-  IDLE = "IDLE",
-  UPLOADING = "UPLOADING",
-  PROCESSING = "PROCESSING",
-  READY = "READY",
 }
 
 type RenderCompletePayload = {
