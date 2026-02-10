@@ -75,8 +75,6 @@ export default function IndexRoute() {
 
   const hasHistory = designHistory.length > 0;
 
-  console.log("Design history:", designHistory);
-
   return (
     <div className="home">
       <Navbar />

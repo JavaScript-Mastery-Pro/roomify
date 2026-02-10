@@ -25,7 +25,9 @@ const ensureHosting = async (): Promise<HostingConfig | null> => {
   if (!puter?.hosting?.create) return null;
 
   try {
-    const existing = await puter.kv.get(HOSTING_CONFIG_KEY);
+    const existing = (await puter.kv.get(
+      HOSTING_CONFIG_KEY,
+    )) as HostingConfig | null;
     if (existing?.subdomain && existing?.root_dir) {
       return {
         subdomain: existing.subdomain,
@@ -250,7 +252,8 @@ export const saveProject = async (
       : null;
 
   const resolvedSource =
-    hostedSource?.url || (isHostedUrl(item.sourceImage) ? item.sourceImage : "");
+    hostedSource?.url ||
+    (isHostedUrl(item.sourceImage) ? item.sourceImage : "");
   if (!resolvedSource) {
     console.warn("Failed to host source image; skipping save.");
     return null;
