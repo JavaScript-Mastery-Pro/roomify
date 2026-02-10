@@ -14,51 +14,6 @@ import {
 type HostingConfig = { subdomain: string; root_dir: string };
 type HostedAsset = { url: string };
 
-const isHostingConfig = (value: unknown): value is HostingConfig =>
-  !!value &&
-  typeof value === "object" &&
-  typeof (value as HostingConfig).subdomain === "string" &&
-  typeof (value as HostingConfig).root_dir === "string";
-
-const loadLocalHosting = (): HostingConfig | null => {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage?.getItem(HOSTING_CONFIG_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return isHostingConfig(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-};
-
-const loadKvHosting = async (): Promise<HostingConfig | null> => {
-  try {
-    const value = await puter.kv.get(HOSTING_CONFIG_KEY);
-    return isHostingConfig(value) ? value : null;
-  } catch {
-    return null;
-  }
-};
-
-const persistLocalHosting = (record: HostingConfig) => {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage?.setItem(HOSTING_CONFIG_KEY, JSON.stringify(record));
-  } catch {
-    // Ignore storage errors
-  }
-};
-
-const saveHostingConfig = async (record: HostingConfig) => {
-  try {
-    await puter.kv.set(HOSTING_CONFIG_KEY, record);
-  } catch {
-    // KV may be unavailable in some contexts
-  }
-  persistLocalHosting(record);
-};
-
 const resolveRootDir = (dir: string) => {
   if (!dir) return dir;
   if (dir.startsWith("/") || dir.startsWith("~")) return dir;
@@ -69,30 +24,16 @@ const resolveRootDir = (dir: string) => {
 const ensureHosting = async (): Promise<HostingConfig | null> => {
   if (!puter?.hosting?.create) return null;
 
-  const existing = (await loadKvHosting()) ?? loadLocalHosting();
-  if (existing) {
-    const hasAbsoluteRoot =
-      existing.root_dir.startsWith("/") || existing.root_dir.startsWith("~");
-
-    if (!hasAbsoluteRoot && puter?.hosting?.get) {
-      try {
-        const fetched = await puter.hosting.get(existing.subdomain);
-        if (fetched?.root_dir && typeof fetched.root_dir === "string") {
-          const upgraded = {
-            subdomain: existing.subdomain,
-            root_dir: resolveRootDir(fetched.root_dir),
-          };
-          await saveHostingConfig(upgraded);
-          return upgraded;
-        }
-      } catch {
-        // Ignore fetch errors
-      }
+  try {
+    const existing = await puter.kv.get(HOSTING_CONFIG_KEY);
+    if (existing?.subdomain && existing?.root_dir) {
+      return {
+        subdomain: existing.subdomain,
+        root_dir: resolveRootDir(existing.root_dir),
+      };
     }
-
-    return hasAbsoluteRoot
-      ? existing
-      : { ...existing, root_dir: resolveRootDir(existing.root_dir) };
+  } catch {
+    // Ignore KV errors and fall back to creating hosting
   }
 
   const subdomain = createHostingSlug();
@@ -130,7 +71,11 @@ const ensureHosting = async (): Promise<HostingConfig | null> => {
       subdomain: createdSubdomain,
       root_dir: resolveRootDir(createdRootDir),
     };
-    await saveHostingConfig(record);
+    try {
+      await puter.kv.set(HOSTING_CONFIG_KEY, record);
+    } catch {
+      // Ignore KV errors
+    }
     return record;
   } catch (error) {
     console.warn("Hosting create failed:", error);
