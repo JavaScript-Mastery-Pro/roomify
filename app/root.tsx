@@ -32,6 +32,8 @@ export default function Root() {
   }, []);
 
   const signIn = async () => {
+    const alreadySignedIn = await refreshAuth();
+    if (alreadySignedIn) return true;
     await puterSignIn();
     return await refreshAuth();
   };

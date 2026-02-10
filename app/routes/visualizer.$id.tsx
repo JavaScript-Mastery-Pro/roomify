@@ -57,10 +57,11 @@ export default function VisualizerRoute() {
     renderedPath?: string;
   }) => {
     if (!id) return;
+    const sourceImage = resolvedItem?.sourceImage || uploadedImage || "";
     const updatedItem = {
       id,
       name: resolvedItem?.name || `Residence ${id}`,
-      sourceImage: uploadedImage || "",
+      sourceImage,
       renderedImage: payload.renderedImage,
       renderedPath: payload.renderedPath,
       timestamp: Date.now(),
@@ -68,7 +69,15 @@ export default function VisualizerRoute() {
       isPublic: resolvedItem?.isPublic || false,
     };
     setResolvedItem(updatedItem);
-    await saveProject(updatedItem, updatedItem.isPublic ? "public" : "private");
+    const saved = await saveProject(
+      updatedItem,
+      updatedItem.isPublic ? "public" : "private",
+    );
+    if (saved) {
+      setResolvedItem(saved);
+      if (saved.sourceImage) setUploadedImage(saved.sourceImage);
+      if (saved.renderedImage) setSelectedInitialRender(saved.renderedImage);
+    }
   };
 
   const handleShareCurrent = async (
@@ -92,9 +101,19 @@ export default function VisualizerRoute() {
     };
     setResolvedItem(updatedItem);
     if (visibility === "public") {
-      await shareProject(updatedItem);
+      const saved = await shareProject(updatedItem);
+      if (saved) {
+        setResolvedItem(saved);
+        if (saved.sourceImage) setUploadedImage(saved.sourceImage);
+        if (saved.renderedImage) setSelectedInitialRender(saved.renderedImage);
+      }
     } else {
-      await unshareProject(updatedItem);
+      const saved = await unshareProject(updatedItem);
+      if (saved) {
+        setResolvedItem(saved);
+        if (saved.sourceImage) setUploadedImage(saved.sourceImage);
+        if (saved.renderedImage) setSelectedInitialRender(saved.renderedImage);
+      }
     }
   };
 
@@ -116,7 +135,7 @@ export default function VisualizerRoute() {
       setResolvedItem(item);
       setUploadedImage(state.initialImage);
       setSelectedInitialRender(state.initialRender || null);
-      return;
+      if (state.initialRender) return;
     }
 
     const resolve = async () => {

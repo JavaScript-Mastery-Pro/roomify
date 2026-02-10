@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router";
+import { useLocation, useNavigate, useOutletContext } from "react-router";
 import { ArrowRight, ArrowUpRight, Clock, Layers } from "lucide-react";
 
 import Upload from "@/components/Upload";
@@ -10,9 +10,11 @@ import { getProjects, saveProject } from "@/lib/puter.action";
 
 export default function IndexRoute() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [designHistory, setDesignHistory] = useState<DesignHistoryItem[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const { isSignedIn, userName, signIn } = useOutletContext<AuthContext>();
+  const { isSignedIn, userName, signIn, refreshAuth } =
+    useOutletContext<AuthContext>();
 
   const fetchHistory = async () => {
     if (!isSignedIn) return;
@@ -29,12 +31,13 @@ export default function IndexRoute() {
       return;
     }
     fetchHistory();
-  }, [isSignedIn]);
+  }, [isSignedIn, location.key]);
 
   const handleUploadComplete = async (base64Image: string) => {
-    if (!isSignedIn) {
+    const ensuredSignedIn = isSignedIn ? true : await refreshAuth();
+    if (!ensuredSignedIn) {
       const signedIn = await signIn();
-      if (!signedIn) return;
+      if (!signedIn) return false;
     }
 
     const newId = Date.now().toString();
@@ -48,15 +51,31 @@ export default function IndexRoute() {
       timestamp: Date.now(),
     };
 
-    setDesignHistory((prev) => [newItem, ...prev]);
-    await saveProject(newItem, "private");
+    const saved = await saveProject(newItem, "private");
+    if (!saved) {
+      console.error("Failed to host source image; project not saved.");
+      return false;
+    }
+
+    setDesignHistory((prev) => {
+      const filtered = prev.filter((item) => item.id !== newId);
+      return [saved, ...filtered];
+    });
 
     navigate(`/visualizer/${newId}?source=user`, {
-      state: { initialImage: base64Image, initialRender: null, name },
+      state: {
+        initialImage: saved.sourceImage,
+        initialRender: saved.renderedImage || null,
+        name,
+      },
     });
+
+    return true;
   };
 
   const hasHistory = designHistory.length > 0;
+
+  console.log("Design history:", designHistory);
 
   return (
     <div className="home">
@@ -193,7 +212,6 @@ export default function IndexRoute() {
           )}
         </div>
       </section>
-
     </div>
   );
 }

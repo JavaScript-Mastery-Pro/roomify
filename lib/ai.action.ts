@@ -1,6 +1,19 @@
 import { puter } from "@heyputer/puter.js";
 import { ROOMIFY_RENDER_PROMPT } from "@/lib/constants";
 
+const fetchAsDataUrl = async (url: string): Promise<string> => {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Failed to fetch source image.");
+  const blob = await response.blob();
+
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to read source image."));
+    reader.onload = () => resolve(reader.result as string);
+    reader.readAsDataURL(blob);
+  });
+};
+
 export const generate3DView = async ({
   sourceImage,
   projectId,
@@ -8,8 +21,16 @@ export const generate3DView = async ({
   sourceImage: string;
   projectId?: string | null;
 }) => {
-  const base64Data = sourceImage.split(",")[1];
-  const mimeType = sourceImage.split(";")[0].split(":")[1];
+  const dataUrl = sourceImage.startsWith("data:")
+    ? sourceImage
+    : await fetchAsDataUrl(sourceImage);
+
+  const base64Data = dataUrl.split(",")[1];
+  const mimeType = dataUrl.split(";")[0].split(":")[1];
+
+  if (!base64Data || !mimeType) {
+    throw new Error("Invalid source image payload.");
+  }
 
   const response = await puter.ai.txt2img(ROOMIFY_RENDER_PROMPT, {
     provider: "gemini",
@@ -24,27 +45,23 @@ export const generate3DView = async ({
       ? response
       : response instanceof HTMLImageElement
         ? response.src
-        : null;
+        : response && typeof response === "object"
+          ? typeof (response as { src?: string }).src === "string"
+            ? (response as { src: string }).src
+            : typeof (response as { url?: string }).url === "string"
+              ? (response as { url: string }).url
+              : Array.isArray((response as { data?: unknown[] }).data) &&
+                  typeof (response as { data: { url?: string }[] }).data?.[0]
+                    ?.url === "string"
+                ? (response as { data: { url: string }[] }).data[0].url
+                : null
+          : null;
 
   if (!rawImageUrl) return { renderedImage: null, renderedPath: undefined };
 
-  try {
-    const blob = await (await fetch(rawImageUrl)).blob();
-    try {
-      await puter.fs.mkdir("roomify/renders", { recursive: true });
-    } catch (error) {
-      console.warn("Failed to ensure render directory:", error);
-    }
+  const renderedImage = rawImageUrl.startsWith("data:")
+    ? rawImageUrl
+    : await fetchAsDataUrl(rawImageUrl);
 
-    const fileName = projectId
-      ? `roomify/renders/${projectId}.png`
-      : `roomify/renders/${Date.now()}.png`;
-    await puter.fs.write(fileName, blob);
-
-    const storedUrl = await puter.fs.getReadURL(fileName);
-    return { renderedImage: storedUrl, renderedPath: fileName };
-  } catch (error) {
-    console.error("Failed to store image in Puter FS:", error);
-    return { renderedImage: rawImageUrl, renderedPath: undefined };
-  }
+  return { renderedImage, renderedPath: undefined };
 };

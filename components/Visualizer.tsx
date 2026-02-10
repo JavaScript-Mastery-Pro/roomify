@@ -146,6 +146,12 @@ const Visualizer = ({
     runGeneration();
   }, [initialImage, initialRender]);
 
+  useEffect(() => {
+    if (!initialRender || isProcessing) return;
+    if (initialRender === currentImage) return;
+    setCurrentImage(initialRender);
+  }, [currentImage, initialRender, isProcessing]);
+
   return (
     <div className="visualizer">
       <AuthRequiredModal

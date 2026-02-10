@@ -61,7 +61,7 @@ interface VisualizerProps {
 }
 
 interface UploadProps {
-  onComplete: (base64File: string) => void;
+  onComplete: (base64File: string) => Promise<boolean | void> | boolean | void;
   className?: string;
 }
 

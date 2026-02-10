@@ -58,7 +58,19 @@ const Upload = ({ onComplete, className = "" }: UploadProps) => {
             completed = true;
             clearInterval(interval);
             setTimeout(() => {
-              onComplete(result);
+              (async () => {
+                try {
+                  const outcome = await onComplete(result);
+                  if (outcome === false) {
+                    setFile(null);
+                    setProgress(0);
+                  }
+                } catch (error) {
+                  console.error("Upload failed:", error);
+                  setFile(null);
+                  setProgress(0);
+                }
+              })();
             }, 600);
           }
 
