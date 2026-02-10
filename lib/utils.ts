@@ -36,18 +36,14 @@ export const getHostedUrl = (
 
 export const getImageExtension = (contentType: string, url: string): string => {
   const type = (contentType || "").toLowerCase();
-  if (type.includes("image/png")) return "png";
-  if (type.includes("image/jpeg") || type.includes("image/jpg")) return "jpg";
-  if (type.includes("image/webp")) return "webp";
-  if (type.includes("image/gif")) return "gif";
-  if (type.includes("image/svg")) return "svg";
-
-  if (url && !url.startsWith("http") && !url.startsWith("data:")) {
-    const parts = url.split(".");
-    if (parts.length > 1) {
-      const ext = parts.pop();
-      if (ext) return ext.toLowerCase();
-    }
+  const typeMatch = type.match(/image\/(png|jpe?g|webp|gif|svg\+xml|svg)/);
+  if (typeMatch?.[1]) {
+    const ext = typeMatch[1].toLowerCase();
+    return ext === "jpeg" || ext === "jpg"
+      ? "jpg"
+      : ext === "svg+xml"
+        ? "svg"
+        : ext;
   }
 
   const dataMatch = url.match(/^data:image\/([a-z0-9+.-]+);/i);
@@ -56,23 +52,21 @@ export const getImageExtension = (contentType: string, url: string): string => {
     return ext === "jpeg" ? "jpg" : ext;
   }
 
-  try {
-    const parsed = new URL(url);
-    const ext = parsed.pathname.split(".").pop();
-    return ext ? ext.toLowerCase() : "png";
-  } catch {
-    return "png";
-  }
+  const extMatch = url.match(/\.([a-z0-9]+)(?:$|[?#])/i);
+  if (extMatch?.[1]) return extMatch[1].toLowerCase();
+
+  return "png";
 };
 
 export const dataUrlToBlob = (
   dataUrl: string,
 ): { blob: Blob; contentType: string } | null => {
   try {
-    const [header, data] = dataUrl.split(",", 2);
-    if (!header || typeof data !== "string") return null;
-    const contentType = header.split(":")[1]?.split(";")[0] || "";
-    const isBase64 = header.includes(";base64");
+    const match = dataUrl.match(/^data:([^;]+)?(;base64)?,([\s\S]*)$/i);
+    if (!match) return null;
+    const contentType = match[1] || "";
+    const isBase64 = !!match[2];
+    const data = match[3] || "";
     const raw = isBase64 ? atob(data.replace(/\s/g, "")) : decodeURIComponent(data);
     const bytes = new Uint8Array(raw.length);
     for (let i = 0; i < raw.length; i += 1) {
