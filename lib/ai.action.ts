@@ -40,22 +40,7 @@ export const generate3DView = async ({
     ratio: { w: 1024, h: 1024 },
   });
 
-  const rawImageUrl =
-    typeof response === "string"
-      ? response
-      : response instanceof HTMLImageElement
-        ? response.src
-        : response && typeof response === "object"
-          ? typeof (response as { src?: string }).src === "string"
-            ? (response as { src: string }).src
-            : typeof (response as { url?: string }).url === "string"
-              ? (response as { url: string }).url
-              : Array.isArray((response as { data?: unknown[] }).data) &&
-                  typeof (response as { data: { url?: string }[] }).data?.[0]
-                    ?.url === "string"
-                ? (response as { data: { url: string }[] }).data[0].url
-                : null
-          : null;
+  const rawImageUrl = (response as HTMLImageElement).src ?? null;
 
   if (!rawImageUrl) return { renderedImage: null, renderedPath: undefined };
 
