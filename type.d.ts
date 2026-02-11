@@ -44,6 +44,7 @@ type VisualizerLocationState = {
   initialRender?: string | null;
   ownerId?: string | null;
   name?: string | null;
+  sharedBy?: string | null;
 };
 
 interface VisualizerProps {

@@ -165,6 +165,7 @@ export default function IndexRoute() {
                               initialRender: item.renderedImage || null,
                               ownerId: item.ownerId || null,
                               name: item.name || null,
+                              sharedBy: item.sharedBy || null,
                             },
                           },
                         );

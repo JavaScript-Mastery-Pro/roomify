@@ -131,6 +131,7 @@ export default function VisualizerRoute() {
         timestamp: Date.now(),
         ownerId: state.ownerId || queryOwnerId || null,
         isPublic: isPublicProject,
+        sharedBy: state.sharedBy || null,
       };
       setResolvedItem(item);
       setUploadedImage(state.initialImage);
