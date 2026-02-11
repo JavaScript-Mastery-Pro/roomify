@@ -78,7 +78,8 @@ const storeHostedImage = async ({
     const uploadFile = new File([resolved.blob], `${label}.${ext}`, {
       type: contentType || "application/octet-stream",
     });
-    await puter.fs.write(filePath, uploadFile, {createMissingParents: true});
+    await puter.fs.mkdir(dir, {createMissingParents: true});
+    await puter.fs.write(filePath, uploadFile);
 
     const hostedUrl = getHostedUrl(
       { subdomain: hosting.subdomain },
