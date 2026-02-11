@@ -97,7 +97,7 @@ export const signOut = () => puter.auth.signOut();
 
 export const getCurrentUser = async () => {
   try {
-    return await puter.auth.whoami();
+    return await puter.auth.getUser();
   } catch {
     return null;
   }
